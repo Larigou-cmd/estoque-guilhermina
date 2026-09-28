@@ -355,6 +355,11 @@
 
   .kl-short { display: none; }
 
+  /* ----- O que pedir / parados ----- */
+  .pedir-meta { display: block; font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; font-weight: 400; }
+  .pedir-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  @media (min-width: 481px) { #geralPainelBody .cob-row { grid-template-columns: minmax(110px, 40%) 1fr auto; } }
+
   /* ----- Uso real (site + acerto do relatório) ----- */
   :root { --mag-claro: #ffa6ee; }
   .ur-resumo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -993,9 +998,9 @@
     for (const line of mergedLines) {
       const m = line.match(lineRe);
       if (!m) continue;
-      const [, code, name, unit, , , saldoRaw] = m;
+      const [, code, name, unit, , ultMov, saldoRaw] = m;
       const qty = parseInt(saldoRaw.replace(/\./g, ""), 10) || 0;
-      results.push({ code, name: name.trim(), unit: unit.trim(), qty });
+      results.push({ code, name: name.trim(), unit: unit.trim(), qty, ultMov });
     }
     return results;
   }
@@ -1077,6 +1082,12 @@
   // de ANTES da baixa. Na importação, o saldo do relatório é descontado dessas baixas
   // pendentes — assim a importação nunca desfaz o que a Enfermagem registrou.
   // Quando a farmácia lança no Olostech, marca a baixa como "lançada" no site.
+  // "dd/mm/aaaa" do relatório -> data (meio-dia, para não virar o dia por fuso)
+  function dataBRparaTs(txt) {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(txt || "");
+    return m ? new Date(+m[3], +m[2] - 1, +m[1], 12).getTime() : 0;
+  }
+
   function pendentePorItem() {
     const soma = {};
     pendentesOlostech.forEach((m) => { soma[m.itemId] = (soma[m.itemId] || 0) + (Number(m.delta) || 0); });
@@ -1141,6 +1152,7 @@
           min: prev.min || 0,
           notes: prev.notes || (it.code ? "" : "via consulta pública (sem código Olostech)"),
           code: it.code || prev.code || "",
+          ...(dataBRparaTs(it.ultMov) ? { ultMovOlostech: dataBRparaTs(it.ultMov) } : {}),
           updatedAt: Date.now(),
         }, { merge: true });
         logMovement(docId, it.name || prev.name, qtyBefore, qtyFinal, "import");
@@ -1691,12 +1703,30 @@
   let geralCobTodos = false;   // "ver todos" na lista de dias que dura
   let geralBulTodos = false;   // "ver todos" no saldo x mínimo
   let geralRankTodos = false;  // "ver todos" nos mais consumidos
+  let geralCobertura = 30;     // "o que pedir": dias que o pedido deve cobrir
+  let geralPedirTodos = false;
+  let geralZeroTodos = false;
+  let geralParadoTodos = false;
+  let geralTextoPedido = "";
 
   function passoRedondo(max, partes) {
     const bruto = Math.max(1, max / partes);
     const pot = Math.pow(10, Math.floor(Math.log10(bruto)));
     const n = bruto / pot;
     return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pot;
+  }
+
+  // Copia um texto (ex.: lista do pedido) para colar no WhatsApp ou num documento
+  async function copiarTexto(texto) {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch (e) {
+      const t = document.createElement("textarea");
+      t.value = texto; document.body.appendChild(t); t.select();
+      try { document.execCommand("copy"); } catch (e2) { /* sem cópia */ }
+      t.remove();
+    }
+    showToast("Lista copiada — é só colar");
   }
 
   function renderGeralPainel() {
@@ -1769,6 +1799,110 @@
       ${comMin.length > 15 ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="bul">${geralBulTodos ? "Mostrar só os 15 primeiros" : `Ver todos os ${comMin.length} itens`}</button>` : ""}`
       : `<div class="stats-note">Nenhum item tem estoque mínimo cadastrado ainda. Para aparecer aqui, toque no lápis de um item na Lista e preencha "Estoque mínimo". Dica: use o consumo por mês do gráfico "Mais consumidos" acima como ponto de partida.</div>`;
 
+    // Movimentações de cada item, em ordem de data (usadas em "dias zerado")
+    const movsDoItem = {};
+    movements.forEach((m) => { (movsDoItem[m.itemId] = movsDoItem[m.itemId] || []).push(m); });
+    Object.values(movsDoItem).forEach((ms) => ms.sort((a, b) => a.ts - b.ts));
+
+    // 5) O que pedir: quantidade para o estoque durar "geralCobertura" dias
+    //    (nunca abaixo do estoque mínimo, se houver)
+    const porDiaDe = Object.fromEntries(cob.map((c) => [c.id, c.porDia]));
+    const pedidos = lista
+      .map((it) => {
+        const porDia = porDiaDe[it.id] || 0;
+        const alvo = Math.max(Math.ceil(porDia * geralCobertura), Number(it.min) || 0);
+        return { ...it, porDia, pedirN: Math.max(0, alvo - it.qtd), dias: porDia ? it.qtd / porDia : Infinity };
+      })
+      .filter((r) => r.pedirN > 0)
+      .sort((a, b) => (a.dias - b.dias) || (b.pedirN - a.pedirN));
+    const LIM_NOVOS = 15;
+    const maxPedir = Math.max(...pedidos.map((r) => r.pedirN), 1);
+    const pedirMostrar = geralPedirTodos ? pedidos : pedidos.slice(0, LIM_NOVOS);
+    const pedirHtml = `
+      <div class="filters" style="margin-bottom:10px;align-items:center">
+        <span class="chart-sub" style="margin:0 4px 0 0">Para durar</span>
+        ${[15, 30, 60].map((d) => `<button class="chip${d === geralCobertura ? " active" : ""}" data-cobertura="${d}">${d} dias</button>`).join("")}
+      </div>
+      ${pedidos.length ? `
+        ${pedirMostrar.map((r) => `
+          <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.name}: saldo ${r.qtd}, usa ≈ ${(r.porDia * 30).toFixed(0)}/mês → pedir ${r.pedirN}`)}">
+            <div class="hb-name">${escapeHtml(r.name)}<small class="pedir-meta">saldo ${r.qtd} · usa ≈ ${(r.porDia * 30).toFixed(0)}/mês${r.qtd === 0 ? " · zerado" : Number.isFinite(r.dias) ? ` · dura ${r.dias < 1 ? "menos de 1 dia" : Math.round(r.dias) + " dia(s)"}` : ""}</small></div>
+            <div class="hb-track"><div class="hb-bar" style="width:${Math.max(2, (r.pedirN / maxPedir) * 100)}%;background:${corDias(r.dias)}"></div></div>
+            <div class="cob-val">pedir <b>${r.pedirN.toLocaleString("pt-BR")}</b></div>
+          </div>`).join("")}
+        <div class="pedir-acoes">
+          ${pedidos.length > LIM_NOVOS ? `<button class="btn-ghost btn-sm" data-vermais="pedir">${geralPedirTodos ? `Mostrar só os ${LIM_NOVOS} primeiros` : `Ver todos os ${pedidos.length} itens`}</button>` : ""}
+          <button class="btn-outline btn-sm" data-copiar="pedido">Copiar lista do pedido</button>
+        </div>`
+      : `<div class="chart-sub">Nenhum item precisa de pedido para durar ${geralCobertura} dias, pelo consumo registrado.</div>`}`;
+    const textoPedido = `Pedido — Usafa Guilhermina (${new Date().toLocaleDateString("pt-BR")}) — para ${geralCobertura} dias\n` +
+      pedidos.map((r) => `${r.name} (${r.unit || "un"}): ${r.pedirN}`).join("\n");
+
+    // 6) Dias zerado no período: soma do tempo com saldo 0, pelo histórico de movimentações.
+    //    Antes da primeira importação de um item o saldo é desconhecido e não conta.
+    const inicioHist = movements.length ? Math.min(...movements.map((m) => m.ts)) : agora;
+    const iniJanela = Math.max(agora - geralBase * DIA, inicioHist);
+    const diasJanela = Math.max(1, Math.round((agora - iniJanela) / DIA));
+    const zerados = lista.map((it) => {
+      const ms = movsDoItem[it.id] || [];
+      let cursor = iniJanela, q, i = 0;
+      const antes = ms.filter((m) => m.ts <= iniJanela);
+      if (antes.length) { q = Number(antes[antes.length - 1].qtyAfter) || 0; i = antes.length; }
+      else if (ms.length) {
+        const p = ms[0];
+        if (p.source === "import" && Number(p.qtyBefore) === 0) { cursor = Math.max(p.ts, iniJanela); q = Number(p.qtyAfter) || 0; i = 1; }
+        else q = Number(p.qtyBefore) || 0;
+      } else q = it.qtd;
+      let zeroMs = 0;
+      for (; i < ms.length; i++) {
+        if (q === 0) zeroMs += ms[i].ts - cursor;
+        cursor = ms[i].ts;
+        q = Number(ms[i].qtyAfter) || 0;
+      }
+      if (q === 0) zeroMs += agora - cursor;
+      return { ...it, diasZero: zeroMs / DIA };
+    }).filter((r) => r.diasZero >= 0.5).sort((a, b) => b.diasZero - a.diasZero);
+    const maxZero = Math.max(...zerados.map((r) => r.diasZero), 1);
+    const zeroMostrar = geralZeroTodos ? zerados : zerados.slice(0, LIM_NOVOS);
+    const zeroHtml = zerados.length ? `
+      ${zeroMostrar.map((r) => `
+        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.name}: ${Math.round(r.diasZero)} dia(s) sem estoque${r.qtd === 0 ? " — zerado agora" : ""}`)}">
+          <div class="hb-name">${escapeHtml(r.name)}${r.qtd === 0 ? '<span class="badge badge-zero">zerado agora</span>' : ""}</div>
+          <div class="hb-track"><div class="hb-bar" style="width:${Math.max(2, (r.diasZero / maxZero) * 100)}%;background:var(--red)"></div></div>
+          <div class="cob-val"><b>${Math.round(r.diasZero)}</b> dia${Math.round(r.diasZero) === 1 ? "" : "s"}</div>
+        </div>`).join("")}
+      ${zerados.length > LIM_NOVOS ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="zero">${geralZeroTodos ? `Mostrar só os ${LIM_NOVOS} primeiros` : `Ver todos os ${zerados.length} itens`}</button>` : ""}`
+      : `<div class="chart-sub">Nenhum item ficou zerado nesse período.</div>`;
+
+    // 7) Itens parados: sem movimento no Olostech (nem baixa no site) há 60 dias ou mais
+    const PARADO_DIAS = 60;
+    const ultimaBaixaSite = {};
+    movements.forEach((m) => { if (m.source === "enfermagem") ultimaBaixaSite[m.itemId] = Math.max(ultimaBaixaSite[m.itemId] || 0, m.ts); });
+    const semData = lista.filter((it) => !Number(it.ultMovOlostech)).length;
+    const parados = lista
+      .filter((it) => it.qtd > 0 && Number(it.ultMovOlostech) > 0)
+      .map((it) => {
+        const ultimo = Math.max(Number(it.ultMovOlostech), ultimaBaixaSite[it.id] || 0);
+        return { ...it, ultimo, diasParado: Math.floor((agora - ultimo) / DIA) };
+      })
+      .filter((r) => r.diasParado >= PARADO_DIAS)
+      .sort((a, b) => b.diasParado - a.diasParado);
+    const maxParado = Math.max(...parados.map((r) => r.diasParado), 1);
+    const paradoMostrar = geralParadoTodos ? parados : parados.slice(0, LIM_NOVOS);
+    const paradoHtml = parados.length ? `
+      ${paradoMostrar.map((r) => `
+        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.name}: último movimento em ${new Date(r.ultimo).toLocaleDateString("pt-BR")}, saldo ${r.qtd}`)}">
+          <div class="hb-name">${escapeHtml(r.name)}<small class="pedir-meta">último movimento ${new Date(r.ultimo).toLocaleDateString("pt-BR")} · saldo ${r.qtd.toLocaleString("pt-BR")} ${escapeHtml(r.unit || "")}</small></div>
+          <div class="hb-track"><div class="hb-bar" style="width:${Math.max(2, (r.diasParado / maxParado) * 100)}%"></div></div>
+          <div class="cob-val"><b>${r.diasParado}</b> dias</div>
+        </div>`).join("")}
+      ${parados.length > LIM_NOVOS ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="parado">${geralParadoTodos ? `Mostrar só os ${LIM_NOVOS} primeiros` : `Ver todos os ${parados.length} itens`}</button>` : ""}`
+      : semData === lista.length
+        ? `<div class="chart-sub">Importe um relatório do Olostech para este gráfico aparecer (ele usa a coluna "Ult. Movimento").</div>`
+        : `<div class="chart-sub">Nenhum item com saldo está parado há ${PARADO_DIAS} dias ou mais.</div>`;
+
+    geralTextoPedido = textoPedido;
+
     // 4) Histórico de saldo de um item
     const movPorItem = {};
     movements.forEach((m) => { (movPorItem[m.itemId] = movPorItem[m.itemId] || []).push(m); });
@@ -1789,9 +1923,24 @@
         ${cobHtml}
       </div>
       <div class="chart-block">
+        <h3>O que pedir</h3>
+        <div class="chart-sub">Quantidade para o estoque durar o período escolhido, pelo consumo dos últimos ${Math.round(diasBase) || 1} dia(s) (e nunca abaixo do estoque mínimo). Os mais urgentes aparecem no topo.${avisoHist}</div>
+        ${pedirHtml}
+      </div>
+      <div class="chart-block">
         <h3>Mais consumidos</h3>
         <div class="chart-sub">Total que saiu nos últimos ${Math.round(diasBase) || 1} dia(s) e a média por mês (CMM).</div>
         ${rankingConsumoHtml(movements.filter((m) => m.ts >= corte), diasBase, 10, "rank", geralRankTodos)}
+      </div>
+      <div class="chart-block">
+        <h3>Dias zerado</h3>
+        <div class="chart-sub">Quantos dias cada item ficou sem estoque nos últimos ${diasJanela} dia(s). O site sabe que zerou quando o relatório é importado — o dia exato pode ter sido antes.</div>
+        ${zeroHtml}
+      </div>
+      <div class="chart-block">
+        <h3>Itens parados</h3>
+        <div class="chart-sub">Itens com saldo sem nenhum movimento no Olostech (nem baixa no site) há ${PARADO_DIAS} dias ou mais — confira a validade na prateleira.</div>
+        ${paradoHtml}
       </div>
       <div class="chart-block">
         <h3>Saldo x estoque mínimo</h3>
@@ -1885,10 +2034,17 @@
     if (e.target.id === "geralLinhaSel") { geralLinhaItem = e.target.value; renderGeralPainel(); }
   });
   el("geralPainelBody").addEventListener("click", (e) => {
+    const cobertura = e.target.closest("[data-cobertura]");
+    if (cobertura) { geralCobertura = parseInt(cobertura.dataset.cobertura, 10); renderGeralPainel(); return; }
+    if (e.target.closest("[data-copiar]")) { copiarTexto(geralTextoPedido); return; }
     const b = e.target.closest("[data-vermais]");
     if (!b) return;
-    if (b.dataset.vermais === "cob") geralCobTodos = !geralCobTodos;
-    else if (b.dataset.vermais === "rank") geralRankTodos = !geralRankTodos;
+    const qual = b.dataset.vermais;
+    if (qual === "cob") geralCobTodos = !geralCobTodos;
+    else if (qual === "rank") geralRankTodos = !geralRankTodos;
+    else if (qual === "pedir") geralPedirTodos = !geralPedirTodos;
+    else if (qual === "zero") geralZeroTodos = !geralZeroTodos;
+    else if (qual === "parado") geralParadoTodos = !geralParadoTodos;
     else geralBulTodos = !geralBulTodos;
     renderGeralPainel();
   });
