@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Estoque</title>
+<!-- Instalação como aplicativo (PWA) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Estoque">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ===== Tema: console médico futurista — preto puro + neon ===== */
+  :root {
+    --bg: #000000;
+    --panel: #03060b;
+    --line: #13202e;
+    --text: #dff6ff;
+    --text-muted: #6f8aa0;
+    --cyan: #00f0ff;       /* ações e dados */
+    --magenta: #ff2fd0;    /* Enfermagem */
+    --lime: #b6ff3b;       /* OK */
+    --amber: #ffb000;      /* estoque baixo */
+    --red: #ff2a55;        /* zerado */
+    --corner: var(--cyan);
+    --glow: 0 0 6px currentColor, 0 0 18px currentColor;
+    font-family: "Chakra Petch", "Segoe UI", sans-serif;
+    font-variant-numeric: tabular-nums;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 24px 16px 90px;
+    color: var(--text);
+    background-color: var(--bg);
+    /* grade de pontos, como um visor */
+    background-image: radial-gradient(rgba(0,240,255,0.10) 1px, transparent 1px);
+    background-size: 22px 22px;
+    line-height: 1.4;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  /* Cantos em colchete (HUD) — usados em painéis, indicadores e janelas */
+  .card, .kpi, .modal {
+    --k: 14px;
+    background:
+      linear-gradient(var(--corner), var(--corner)) top left / var(--k) 2px no-repeat,
+      linear-gradient(var(--corner), var(--corner)) top left / 2px var(--k) no-repeat,
+      linear-gradient(var(--corner), var(--corner)) top right / var(--k) 2px no-repeat,
+      linear-gradient(var(--corner), var(--corner)) top right / 2px var(--k) no-repeat,
+      linear-gradient(var(--corner), var(--corner)) bottom left / var(--k) 2px no-repeat,
+      linear-gradient(var(--corner), var(--corner)) bottom left / 2px var(--k) no-repeat,
+      linear-gradient(var(--corner), var(--corner)) bottom right / var(--k) 2px no-repeat,
+      linear-gradient(var(--corner), var(--corner)) bottom right / 2px var(--k) no-repeat,
+      var(--panel);
+    border: 1px solid var(--line);
+  }
+
+  /* ----- Cabeçalho ----- */
+  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  header h1 {
+    margin: 0;
+    font-size: clamp(1.5rem, 4vw, 2.1rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(0,240,255,0.8), 0 0 28px rgba(0,240,255,0.45);
+  }
+  header p { margin: 0; color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+  header p::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--lime); color: var(--lime); box-shadow: var(--glow);
+    animation: pulso 2s ease-in-out infinite;
+  }
+  @keyframes pulso { 50% { opacity: 0.3; } }
+
+  /* ----- Navegação principal ----- */
+  .main-nav { display: flex; gap: 10px; margin-bottom: 18px; }
+  .main-nav button {
+    flex: 1; padding: 13px 14px; font-size: 1rem;
+    background: var(--panel); color: var(--text-muted);
+    border: 1px solid var(--line); border-bottom: 2px solid var(--line);
+  }
+  #navGeral.active { color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 18px rgba(0,240,255,0.3), inset 0 0 18px rgba(0,240,255,0.08); }
+  #navEnf.active { color: var(--magenta); border-color: var(--magenta); box-shadow: 0 0 18px rgba(255,47,208,0.3), inset 0 0 18px rgba(255,47,208,0.08); }
+  #enfSection { --corner: var(--magenta); }
+
+  /* ----- Painéis ----- */
+  .card { padding: 18px; margin-bottom: 16px; }
+
+  /* ----- Botões ----- */
+  button {
+    font-family: inherit; cursor: pointer;
+    border: 1px solid transparent; border-radius: 3px;
+    padding: 10px 14px; font-size: 0.92rem; font-weight: 600;
+    transition: box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--cyan); outline-offset: 2px;
+  }
+  .btn-primary { background: var(--cyan); color: #00161a; box-shadow: 0 0 16px rgba(0,240,255,0.55); }
+  .btn-primary:hover { box-shadow: 0 0 26px rgba(0,240,255,0.85); }
+  .btn-outline { background: transparent; color: var(--cyan); border-color: rgba(0,240,255,0.55); }
+  .btn-outline:hover { background: rgba(0,240,255,0.08); box-shadow: 0 0 12px rgba(0,240,255,0.35); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border-color: var(--line); }
+  .btn-danger { background: rgba(255,42,85,0.1); color: var(--red); border-color: var(--red); }
+  .btn-sm { padding: 7px 11px; font-size: 0.84rem; }
+  #enfSection .btn-primary, #enfBackdrop .btn-primary { background: var(--magenta); color: #1a0015; box-shadow: 0 0 16px rgba(255,47,208,0.55); }
+
+  /* ----- Barra de busca ----- */
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar input[type="text"] {
+    flex: 1; min-width: 180px; padding: 10px 12px;
+    background: #000; color: var(--text);
+    border: 1px solid var(--line); border-radius: 3px;
+    font: inherit; font-size: 0.95rem;
+  }
+  .toolbar input[type="text"]::placeholder { color: #4b6070; }
+
+  /* ----- Filtros e abas ----- */
+  .filters { display: flex; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+  .chip {
+    padding: 6px 13px; font-size: 0.82rem;
+    background: transparent; color: var(--text-muted);
+    border: 1px solid var(--line); border-radius: 999px;
+  }
+  .chip:hover { color: var(--text); }
+  .chip.active { color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,240,255,0.4); }
+  #enfSection .chip.active { color: var(--magenta); border-color: var(--magenta); box-shadow: 0 0 10px rgba(255,47,208,0.4); }
+
+  .tabbar { display: flex; gap: 4px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .tab { flex: 1; padding: 9px 10px; background: transparent; color: var(--text-muted); font-size: 0.9rem; border-radius: 0; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); text-shadow: 0 0 10px rgba(0,240,255,0.7); }
+  #enfSection .tab.active { color: var(--magenta); border-bottom-color: var(--magenta); text-shadow: 0 0 10px rgba(255,47,208,0.7); }
+
+  /* ----- Indicadores (mostradores) ----- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .kpi {
+    --c: var(--cyan); --corner: var(--c);
+    padding: 14px 16px 12px; text-align: left; color: var(--text); font-weight: 500;
+    border-radius: 0;
+  }
+  .kpi.clickable { cursor: pointer; }
+  .kpi:hover { box-shadow: 0 0 20px color-mix(in srgb, var(--c) 30%, transparent); }
+  .kpi-label { font-size: 0.85rem; color: var(--text-muted); }
+  .kpi-value { margin-top: 4px; font-size: 2.5rem; font-weight: 700; line-height: 1; color: var(--c); text-shadow: 0 0 8px var(--c), 0 0 24px color-mix(in srgb, var(--c) 60%, transparent); }
+  .k-green { --c: var(--lime); }
+  .k-white { --c: #ffffff; }
+  .k-white .kpi-value { text-shadow: 0 0 10px rgba(255,255,255,0.35); }
+  .k-yellow { --c: var(--amber); }
+  .k-red { --c: var(--red); }
+  .k-cyan { --c: var(--cyan); }
+  .k-magenta { --c: var(--magenta); }
+
+  /* ----- Lista de itens ----- */
+  .item { display: flex; align-items: center; gap: 12px; padding: 12px 8px; border-bottom: 1px solid var(--line); }
+  .item:last-child { border-bottom: none; }
+  .item:hover { background: rgba(0,240,255,0.04); }
+  .item-main { flex: 1; min-width: 0; }
+  .item-name { font-weight: 600; font-size: 1rem; overflow-wrap: anywhere; }
+  .item-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; }
+  .qty-value { min-width: 48px; text-align: right; font-size: 1.35rem; font-weight: 700; color: var(--text); }
+  .qty-low { color: var(--amber); }
+  .qty-zero { color: var(--red); }
+  .item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .icon-btn { background: transparent; padding: 6px 8px; font-size: 0.95rem; border-color: var(--line); }
+  .icon-btn:hover { border-color: var(--cyan); }
+
+  .badge {
+    display: inline-block; margin-left: 8px; padding: 1px 8px;
+    font-size: 0.74rem; font-weight: 600; vertical-align: 2px;
+    border: 1px solid currentColor; border-radius: 3px; background: transparent;
+  }
+  .badge-ok { color: var(--lime); }
+  .badge-low { color: var(--amber); background: rgba(255,176,0,0.08); }
+  .badge-zero { color: var(--red); background: rgba(255,42,85,0.1); text-shadow: 0 0 6px rgba(255,42,85,0.8); }
+  .badge-enf { color: var(--magenta); }
+
+  .empty { text-align: center; padding: 42px 10px; color: var(--text-muted); }
+  .empty div:first-child { font-size: 2rem; margin-bottom: 8px; }
+
+  /* ----- Estatísticas ----- */
+  .stats-note { font-size: 0.84rem; color: var(--text-muted); padding: 10px 12px; margin-bottom: 10px; border-left: 2px solid var(--cyan); background: rgba(0,240,255,0.05); }
+  .stats-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line); }
+  .stats-row:last-child { border-bottom: none; }
+  .stats-rank { width: 30px; flex-shrink: 0; font-weight: 700; color: var(--text-muted); text-align: center; }
+  .stats-rank.top { color: var(--magenta); text-shadow: 0 0 10px var(--magenta); }
+  .stats-name { flex: 1; min-width: 0; font-size: 0.95rem; font-weight: 600; overflow-wrap: anywhere; }
+  .stats-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; font-weight: 400; }
+  .stats-bar { height: 4px; margin-top: 8px; background: #0b141d; overflow: hidden; }
+  .stats-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--magenta)); box-shadow: 0 0 10px var(--cyan); }
+  .stats-value { text-align: right; flex-shrink: 0; }
+  .stats-saida { font-weight: 700; font-size: 1.1rem; color: var(--red); text-shadow: 0 0 8px rgba(255,42,85,0.6); }
+  .stats-cmm { font-size: 0.8rem; color: var(--cyan); }
+
+  /* ----- Histórico ----- */
+  .hist-wrap { overflow-x: auto; }
+  .hist-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .hist-table th, .hist-table td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .hist-table th { color: var(--text-muted); font-size: 0.8rem; font-weight: 600; }
+  .hist-table td.obs { white-space: normal; min-width: 140px; color: var(--text-muted); }
+  .hist-out { color: var(--red); font-weight: 700; }
+  .hist-in { color: var(--lime); font-weight: 700; }
+  .hist-empty { text-align: center; padding: 30px 12px; color: var(--text-muted); font-size: 0.9rem; }
+
+  /* ----- Rodapé de status ----- */
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); color: var(--lime); box-shadow: 0 0 8px currentColor; }
+  .dot.warn { background: var(--amber); color: var(--amber); }
+  .dot.danger { background: var(--red); color: var(--red); }
+
+  /* ----- Botão flutuante ----- */
+  .fab {
+    position: fixed; right: 22px; bottom: 22px; z-index: 40;
+    width: 58px; height: 58px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem; line-height: 1;
+    background: #000; color: var(--cyan); border: 2px solid var(--cyan); border-radius: 50%;
+    box-shadow: 0 0 20px rgba(0,240,255,0.6), inset 0 0 14px rgba(0,240,255,0.3);
+  }
+
+  /* ----- Janelas (modais) ----- */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: flex-end; justify-content: center;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(3px);
+  }
+  .modal {
+    width: 100%; max-width: 500px; max-height: 92vh; overflow-y: auto;
+    padding: 22px 20px calc(22px + env(safe-area-inset-bottom));
+    box-shadow: 0 0 40px rgba(0,240,255,0.18);
+  }
+  #enfBackdrop .modal { --corner: var(--magenta); box-shadow: 0 0 40px rgba(255,47,208,0.18); }
+  @media (min-width: 560px) { .modal-backdrop { align-items: center; } }
+  .modal h2 { margin: 0 0 16px; font-size: 1.2rem; font-weight: 700; color: #fff; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; margin-bottom: 5px; font-size: 0.84rem; font-weight: 600; color: var(--text-muted); }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 10px 12px;
+    background: #000; color: var(--text);
+    border: 1px solid var(--line); border-radius: 3px;
+    font: inherit; font-size: 0.95rem;
+  }
+  .field input[readonly] { color: var(--text-muted); border-style: dashed; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; min-width: 0; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+  .modal-actions button { flex: 1; }
+
+  /* ----- Aviso rápido ----- */
+  .toast {
+    position: fixed; left: 50%; bottom: 96px; z-index: 60;
+    transform: translateX(-50%);
+    padding: 9px 18px; font-size: 0.88rem;
+    background: #000; color: var(--cyan); border: 1px solid var(--cyan);
+    box-shadow: 0 0 16px rgba(0,240,255,0.5);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  /* ----- Gráficos (painel da Enfermagem) ----- */
+  .chart-block { margin-bottom: 30px; }
+  .chart-block:last-child { margin-bottom: 4px; }
+  .chart-block h3 { margin: 0; font-size: 1.02rem; font-weight: 600; color: #fff; }
+  .chart-sub { margin: 2px 0 14px; font-size: 0.82rem; color: var(--text-muted); }
+  .chart-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 30px; }
+
+  /* colunas: uso total por semana */
+  .wk-chart { display: flex; align-items: stretch; height: 170px; border-bottom: 1px solid var(--line); }
+  .wk-col { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: default; outline-offset: -2px; }
+  .wk-col:hover .wk-bar, .wk-col:focus-visible .wk-bar { box-shadow: 0 0 14px var(--magenta); }
+  .wk-val { font-size: 0.78rem; color: var(--text); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+  .wk-bar { width: min(24px, 70%); background: var(--magenta); border-radius: 4px 4px 0 0; }
+  .wk-labels { display: flex; margin-top: 6px; }
+  .wk-labels span { flex: 1; min-width: 0; text-align: center; font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; }
+
+  /* mapa de calor: medicamentos x semanas */
+  .heat-wrap { overflow-x: auto; }
+  .heat { border-collapse: separate; border-spacing: 2px; width: 100%; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+  .heat th { font-weight: 500; font-size: 0.72rem; color: var(--text-muted); padding: 0 2px 4px; text-align: center; white-space: nowrap; }
+  .heat th.med, .heat td.med { text-align: left; padding-right: 10px; min-width: 150px; max-width: 240px; }
+  .heat th.med, .heat td.med { position: sticky; left: 0; z-index: 1; background: var(--panel); }
+  .heat td.med { font-size: 0.84rem; color: var(--text); white-space: normal; overflow-wrap: anywhere; padding: 4px 10px 4px 0; }
+  .heat td.cell { min-width: 38px; height: 32px; text-align: center; border-radius: 3px; }
+  .heat td.cell.zero { background: #0a1018; color: #2e3d4c; }
+  .heat td.tot { text-align: right; padding-left: 10px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .heat-legend { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.74rem; color: var(--text-muted); }
+  .heat-legend i { display: block; width: 120px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, color-mix(in srgb, var(--magenta) 14%, #0a1018), var(--magenta)); }
+
+  /* barras horizontais: por tipo / por responsável */
+  .hb-row { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; align-items: center; gap: 10px; padding: 5px 0; }
+  .hb-name { font-size: 0.86rem; overflow-wrap: anywhere; }
+  .hb-track { height: 14px; display: flex; align-items: center; }
+  .hb-bar { height: 100%; background: var(--magenta); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .hb-val { font-size: 0.86rem; font-weight: 600; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+  .hb-row:hover .hb-bar, .hb-row:focus-visible .hb-bar { box-shadow: 0 0 12px var(--magenta); }
+
+  /* painel do Estoque Geral */
+  #geralPainelBody .hb-bar { background: var(--cyan); }
+  #geralPainelBody .hb-row:hover .hb-bar, #geralPainelBody .hb-row:focus-visible .hb-bar { box-shadow: 0 0 12px var(--cyan); }
+  #geralSection .chip.active[data-geralbase] { color: var(--cyan); }
+
+  .sit-bar { display: flex; gap: 2px; height: 22px; }
+  .sit-bar div { min-width: 4px; }
+  .sit-bar div:first-child { border-radius: 4px 0 0 4px; }
+  .sit-bar div:last-child { border-radius: 0 4px 4px 0; }
+  .sit-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; font-size: 0.88rem; }
+  .sit-legend span { display: flex; align-items: center; gap: 7px; }
+  .sit-legend i { width: 10px; height: 10px; border-radius: 2px; display: block; }
+  .sit-legend b { font-variant-numeric: tabular-nums; }
+
+  .cob-row { display: grid; grid-template-columns: minmax(110px, 40%) 1fr 70px; align-items: center; gap: 10px; padding: 5px 0; }
+  .cob-row .hb-bar { border-radius: 0 4px 4px 0; }
+  .cob-val { font-size: 0.86rem; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .cob-val b { font-weight: 700; }
+
+  .bul-track { position: relative; height: 14px; background: #0a1018; border-radius: 0 4px 4px 0; }
+  .bul-bar { position: absolute; left: 0; top: 3px; bottom: 3px; background: var(--cyan); border-radius: 0 3px 3px 0; }
+  .bul-min { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; }
+
+  .linha-box { position: relative; }
+  .linha-box svg { display: block; width: 100%; overflow: visible; }
+  .linha-box select {
+    margin-bottom: 12px; width: 100%; max-width: 420px; padding: 9px 10px;
+    background: #000; color: var(--text); border: 1px solid var(--line); border-radius: 3px; font: inherit; font-size: 0.9rem;
+  }
+  .ver-mais { margin-top: 8px; }
+
+  .heat td.tot.cmm { font-weight: 500; color: var(--text-muted); }
+
+  /* ----- Menu "⋯" (Importar / Imprimir) ----- */
+  .mais { position: relative; }
+  .mais-btn { height: 100%; min-width: 42px; font-size: 1.1rem; line-height: 1; }
+  .mais-menu {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 45; min-width: 210px;
+    display: flex; flex-direction: column; padding: 6px;
+    background: #000; border: 1px solid var(--cyan); box-shadow: 0 0 20px rgba(0,240,255,0.3);
+  }
+  .mais-menu[hidden] { display: none; }
+  #enfSection .mais-menu { border-color: var(--magenta); box-shadow: 0 0 20px rgba(255,47,208,0.3); }
+  #enfSection .btn-outline { color: var(--magenta); border-color: rgba(255,47,208,0.55); }
+  #enfSection .btn-outline:hover { background: rgba(255,47,208,0.08); box-shadow: 0 0 12px rgba(255,47,208,0.35); }
+  .mais-menu button { background: transparent; color: var(--text); text-align: left; padding: 10px 12px; font-weight: 500; border-radius: 2px; }
+  .mais-menu button:hover, .mais-menu button:focus-visible { background: rgba(0,240,255,0.1); }
+  #enfSection .mais-menu button:hover, #enfSection .mais-menu button:focus-visible { background: rgba(255,47,208,0.1); }
+
+  .kl-short { display: none; }
+
+  /* ----- Baixas pendentes no Olostech ----- */
+  .pend-aviso {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 14px; padding: 10px 14px; font-size: 0.92rem;
+    color: var(--amber); border: 1px solid var(--amber); background: rgba(255,176,0,0.07);
+    box-shadow: 0 0 14px rgba(255,176,0,0.2);
+  }
+  .pend-aviso[hidden] { display: none; }
+  .pend-aviso button { background: transparent; color: var(--amber); border-color: var(--amber); }
+  .pend-aviso button:hover { background: rgba(255,176,0,0.12); }
+  .modal-largo { max-width: 640px; }
+  .pend-totais { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 12px; font-size: 0.84rem; color: var(--text-muted); }
+  .pend-totais b { color: var(--text); font-weight: 600; }
+  .pend-todos { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.86rem; color: var(--text-muted); cursor: pointer; }
+  .pend-tabela input, .pend-todos input { width: 18px; height: 18px; accent-color: var(--cyan); cursor: pointer; }
+  .olo-ok { color: var(--text-muted); }
+  .pend-tabela td:nth-child(3) { white-space: normal; min-width: 110px; }
+  .pend-tabela th, .pend-tabela td { padding-left: 6px; padding-right: 6px; }
+  .import-aviso { margin-top: 8px; padding: 8px 10px; color: var(--amber); border: 1px solid rgba(255,176,0,0.45); background: rgba(255,176,0,0.07); }
+
+  /* ----- Janela de retirada: busca + lista ----- */
+  .combo { position: relative; }
+  .combo-lista {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5;
+    max-height: 240px; overflow-y: auto; background: #000;
+    border: 1px solid var(--magenta); box-shadow: 0 0 18px rgba(255,47,208,0.3);
+  }
+  .combo-lista[hidden] { display: none; }
+  .combo-op { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; font-size: 0.9rem; }
+  .combo-op small { color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .combo-op:hover, .combo-op.ativa { background: rgba(255,47,208,0.14); }
+  .combo-vazio { padding: 10px 12px; color: var(--text-muted); font-size: 0.88rem; }
+  .carrinho { margin-bottom: 14px; }
+  .carrinho-vazio { padding: 12px; font-size: 0.85rem; color: var(--text-muted); border: 1px dashed var(--line); text-align: center; }
+  .carrinho-cab { display: flex; justify-content: space-between; padding: 0 44px 4px 2px; font-size: 0.78rem; color: var(--text-muted); }
+  .carrinho-linha { display: grid; grid-template-columns: 1fr 76px 34px; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+  .carrinho-nome { font-size: 0.9rem; overflow-wrap: anywhere; }
+  .carrinho-nome small { display: block; font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; }
+  .carrinho-linha input { width: 100%; padding: 8px; text-align: center; background: #000; color: var(--text); border: 1px solid var(--line); border-radius: 3px; font: inherit; font-size: 1rem; }
+  .carrinho-linha input:focus { border-color: var(--magenta); outline: none; box-shadow: 0 0 8px rgba(255,47,208,0.4); }
+  .carrinho-linha .icon-btn { justify-content: center; font-size: 1.2rem; line-height: 1; padding: 4px 0; color: var(--text-muted); }
+  .carrinho-linha .icon-btn:hover { color: var(--red); border-color: var(--red); }
+  .dura { color: var(--text); }
+  .sec-enf .fab { color: var(--magenta); border-color: var(--magenta); box-shadow: 0 0 20px rgba(255,47,208,0.6), inset 0 0 14px rgba(255,47,208,0.3); }
+  button:disabled { opacity: 0.5; cursor: wait; }
+
+  /* ----- Ícones de linha (substituem os emojis) ----- */
+  .ic { width: 1.15em; height: 1.15em; flex-shrink: 0; vertical-align: -0.2em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ic.logo { width: 1.05em; height: 1.05em; margin-right: 0.35em; stroke-width: 2; vertical-align: -0.14em; filter: drop-shadow(0 0 4px rgba(0,240,255,0.6)); }
+  .ic-grande { width: 2.2rem; height: 2.2rem; stroke-width: 1.4; color: var(--text-muted); }
+  .main-nav button, .toolbar .btn-primary, .mais-menu button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .mais-menu button { justify-content: flex-start; }
+  .icon-btn { color: var(--cyan); display: inline-flex; }
+  #enfSection .icon-btn { color: var(--magenta); }
+  #enfSection .icon-btn:hover { border-color: var(--magenta); }
+
+  .chart-tip {
+    position: fixed; z-index: 70; pointer-events: none; display: none;
+    max-width: 240px; padding: 7px 10px; font-size: 0.8rem; line-height: 1.35;
+    background: #000; color: var(--text); border: 1px solid var(--magenta);
+    box-shadow: 0 0 14px rgba(255,47,208,0.4);
+  }
+
+  @media (max-width: 480px) {
+    .heat th.med, .heat td.med { min-width: 118px; max-width: 140px; font-size: 0.78rem; }
+    .cob-row, .hb-row { grid-template-columns: 1fr auto; row-gap: 4px; padding: 6px 0; }
+    .cob-row .hb-name, .hb-row .hb-name { grid-column: 1 / -1; }
+    /* indicadores numa faixa só */
+    .kpis { grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+    .kpi { --k: 8px; padding: 8px 4px 7px; text-align: center; }
+    .kpi-label { font-size: 0.7rem; white-space: nowrap; }
+    .kl-full { display: none; }
+    .kl-short { display: inline; }
+    .kpi-value { font-size: 1.45rem; margin-top: 2px; }
+    .field-row { flex-direction: column; gap: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before { animation: none !important; transition: none !important; }
+  }
+
+  /* ----- Impressão: papel branco, sem efeitos ----- */
+  @media print {
+    body { background: #fff; color: #000; padding: 0; }
+    .fab, .toolbar, .filters, .tabbar, .kpis, .main-nav,
+    .item-actions, .toast, .chart-tip, header p { display: none !important; }
+    .card { background: none; border: none; padding: 0; }
+    header h1 { color: #000; text-shadow: none; }
+    .ic.logo { filter: none; }
+    header h1::after { content: " — impresso em " attr(data-print-date); font-size: 0.6em; font-weight: 400; color: #555; }
+    .item, .stats-row { break-inside: avoid; padding: 6px 0; border-bottom: 1px solid #ccc; }
+    .item-name, .qty-value, .stats-saida, .stats-cmm, .stats-rank { color: #000 !important; text-shadow: none !important; }
+    .badge { color: #000 !important; border-color: #999; background: #fff !important; text-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="pageTitle"><svg class="ic logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5" stroke="var(--cyan)"/><path d="M10 7h4v3h3v4h-3v3h-4v-3H7v-4h3z" stroke="var(--magenta)"/></svg>Controle de Estoque</h1>
+    <p id="subtitle">Carregando dados...</p>
+  </header>
+
+  <div class="main-nav">
+    <button class="active" id="navGeral"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Estoque Geral</button>
+    <button id="navEnf"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg>Enfermagem</button>
+  </div>
+
+  <div id="geralSection">
+  <div class="pend-aviso" id="pendAviso" hidden>
+    <span id="pendAvisoTexto"></span>
+    <button class="btn-sm" id="pendVerBtn">Ver lista</button>
+  </div>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="Buscar por nome ou código..." />
+      <button class="btn-outline btn-sm" id="sortBtn" title="Mudar a ordem: A–Z, Z–A ou mais urgentes">A–Z</button>
+      <div class="mais">
+        <button class="btn-outline btn-sm mais-btn" aria-haspopup="true" aria-expanded="false" aria-label="Mais opções" title="Mais opções">⋯</button>
+        <div class="mais-menu" role="menu" hidden>
+          <button role="menuitem" id="importBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>Importar relatório</button>
+          <button role="menuitem" id="printBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="1"/><path d="M6 14h12v7H6z"/></svg>Imprimir lista</button>
+        </div>
+      </div>
+    </div>
+    <div class="filters" id="geralFiltersRow">
+      <button class="chip active" data-filter="all">Todos</button>
+      <button class="chip" data-filter="low">Estoque baixo</button>
+      <button class="chip" data-filter="zero">Zerado</button>
+    </div>
+    <div class="tabbar">
+      <button class="tab active" data-view="list">Lista</button>
+      <button class="tab" data-view="painel">Gráficos</button>
+    </div>
+  </div>
+
+  <div class="card" id="listCard">
+    <div id="itemList"></div>
+    <div class="empty" id="emptyState" style="display:none">
+      <div><svg class="ic ic-grande" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 3h6l1-3h5"/></svg></div>
+      <div>Nenhum item ainda. Use o botão + para adicionar.</div>
+    </div>
+    <div id="geralPainelPanel" style="display:none">
+      <div class="filters" id="geralPainelFilters" style="margin-bottom:14px; align-items:center;">
+        <span class="chart-sub" style="margin:0 4px 0 0">Consumo dos últimos</span>
+        <button class="chip" data-geralbase="7">7 dias</button>
+        <button class="chip active" data-geralbase="30">30 dias</button>
+        <button class="chip" data-geralbase="90">90 dias</button>
+      </div>
+      <div id="geralPainelBody"></div>
+    </div>
+  </div>
+
+  </div>
+
+  <div id="enfSection" style="display:none">
+    <div class="kpis" id="enfKpis"></div>
+
+    <div class="card">
+      <div class="toolbar">
+        <input type="text" id="enfSearchInput" placeholder="Buscar por nome ou código..." />
+        <button class="btn-outline btn-sm" id="enfSortBtn" title="Mudar a ordem: A–Z, Z–A ou mais urgentes">A–Z</button>
+        <button class="btn-primary btn-sm" id="enfRegistrarBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Registrar</button>
+        <div class="mais">
+          <button class="btn-outline btn-sm mais-btn" aria-haspopup="true" aria-expanded="false" aria-label="Mais opções" title="Mais opções">⋯</button>
+          <div class="mais-menu" role="menu" hidden>
+            <button role="menuitem" id="enfPrintBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="1"/><path d="M6 14h12v7H6z"/></svg>Imprimir lista</button>
+          </div>
+        </div>
+      </div>
+      <div class="filters" id="enfFiltersRow">
+        <button class="chip active" data-enffilter="all">Todos</button>
+        <button class="chip" data-enffilter="low">Estoque baixo</button>
+        <button class="chip" data-enffilter="zero">Zerado</button>
+      </div>
+      <div class="tabbar">
+        <button class="tab active" data-enfview="list">Lista</button>
+        <button class="tab" data-enfview="hist">Histórico</button>
+        <button class="tab" data-enfview="painel">Gráficos</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="enfItemList"></div>
+      <div class="empty" id="enfEmptyState" style="display:none">
+        <div><svg class="ic ic-grande" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 3h6l1-3h5"/></svg></div>
+        <div>Nenhum medicamento da Enfermagem encontrado.</div>
+      </div>
+      <div id="enfHistPanel" style="display:none">
+        <div class="filters" id="enfHistFilters" style="margin-bottom:10px;">
+          <button class="chip" data-enfhistperiod="7">7 dias</button>
+          <button class="chip active" data-enfhistperiod="30">30 dias</button>
+          <button class="chip" data-enfhistperiod="90">90 dias</button>
+        </div>
+        <div id="enfHistBody"></div>
+      </div>
+      <div id="enfPainelPanel" style="display:none">
+        <div class="filters" id="enfPainelFilters" style="margin-bottom:14px;">
+          <button class="chip active" data-enfsemanas="4">4 semanas</button>
+          <button class="chip" data-enfsemanas="8">8 semanas</button>
+          <button class="chip" data-enfsemanas="12">12 semanas</button>
+        </div>
+        <div id="enfPainelBody"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="chart-tip" id="chartTip" role="tooltip"></div>
+
+<button class="fab" id="addFab" aria-label="Novo item" title="Novo item">+</button>
+<div class="toast" id="toast"></div>
+
+<!-- Modal: add/edit item -->
+<div class="modal-backdrop" id="modalBackdrop" style="display:none">
+  <div class="modal">
+    <h2 id="modalTitle">Novo item</h2>
+    <div class="field">
+      <label>Nome do item</label>
+      <input type="text" id="fieldName" placeholder="Ex: Dipirona 500mg" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Qtd. disponível</label>
+        <input type="number" id="fieldQty" min="0" step="1" placeholder="0" readonly title="A quantidade é atualizada apenas por importação" />
+      </div>
+      <div class="field">
+        <label>Unidade</label>
+        <input type="text" id="fieldUnit" placeholder="cx, un, fr..." />
+      </div>
+    </div>
+    <div class="field">
+      <label>Código Olostech (opcional)</label>
+      <input type="text" id="fieldCode" placeholder="Ex: 33938" />
+    </div>
+    <div class="field">
+      <label>Estoque mínimo (alerta)</label>
+      <input type="number" id="fieldMin" min="0" step="1" placeholder="0" />
+    </div>
+    <div class="field">
+      <label>Observações (opcional)</label>
+      <textarea id="fieldNotes" rows="2" placeholder="Lote, validade, local..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cancelBtn">Cancelar</button>
+      <button class="btn-danger" id="deleteBtn" style="display:none">Excluir</button>
+      <button class="btn-primary" id="saveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: import from Olostech report -->
+<div class="modal-backdrop" id="importBackdrop" style="display:none">
+  <div class="modal">
+    <h2>Importar relatório do Olostech</h2>
+    <p style="font-size:0.82rem;color:var(--text-muted);margin:-6px 0 12px;">
+      Cole abaixo o texto da "Relação de Saldo de Materiais" (pode copiar direto do PDF ou da tela).
+      Itens com o mesmo código são atualizados; itens novos são criados.
+    </p>
+    <div class="field">
+      <textarea id="importText" rows="10" placeholder="33938 ESCOPOLAMINA N-BUTIL BROMETO 10 MG comp Ativo 17/09/2026 300 159,00&#10;37156 ACETATO DE MEDROXIPROGESTERONA 150MG/ML amp Ativo 16/09/2026 46 180,32&#10;..."></textarea>
+    </div>
+    <div id="importPreview" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:6px;"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="importCancelBtn">Cancelar</button>
+      <button class="btn-primary" id="importConfirmBtn">Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: registrar retirada da Enfermagem (um ou vários medicamentos) -->
+<div class="modal-backdrop" id="enfBackdrop" style="display:none">
+  <div class="modal">
+    <h2>Registrar retirada — Enfermagem</h2>
+    <div class="field">
+      <label for="enfBusca">Adicionar medicamento</label>
+      <div class="combo">
+        <input type="text" id="enfBusca" placeholder="Digite parte do nome ou o código..." autocomplete="off"
+               role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="enfSugestoes" />
+        <div class="combo-lista" id="enfSugestoes" role="listbox" hidden></div>
+      </div>
+    </div>
+    <div id="enfCarrinho" class="carrinho"></div>
+    <div class="field-row">
+      <div class="field">
+        <label for="enfFieldTipo">Tipo de movimentação</label>
+        <select id="enfFieldTipo">
+          <option value="Saída">Saída / Utilização</option>
+          <option value="Entrada">Entrada</option>
+          <option value="Devolução">Devolução</option>
+          <option value="Perda">Perda</option>
+          <option value="Vencimento">Vencimento</option>
+          <option value="Ajuste">Ajuste (define o saldo exato)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="enfFieldData">Data</label>
+        <input type="date" id="enfFieldData" />
+      </div>
+    </div>
+    <div class="field">
+      <label for="enfFieldResponsavel">Responsável</label>
+      <input type="text" id="enfFieldResponsavel" placeholder="Nome do profissional" autocomplete="name" />
+    </div>
+    <div class="field">
+      <label for="enfFieldObs">Observação (opcional)</label>
+      <textarea id="enfFieldObs" rows="2" placeholder="Paciente, motivo, lote..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="enfCancelBtn">Cancelar</button>
+      <button class="btn-primary" id="enfSaveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: baixas da Enfermagem para lançar no Olostech -->
+<div class="modal-backdrop" id="pendBackdrop" style="display:none">
+  <div class="modal modal-largo">
+    <h2>Baixas para lançar no Olostech</h2>
+    <p class="chart-sub" style="margin:-6px 0 14px">Retiradas registradas pela Enfermagem que ainda não foram lançadas no Olostech. Depois de lançar lá, marque aqui — enquanto estiverem pendentes, a importação do relatório desconta essas quantidades.</p>
+    <div id="pendLista"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="pendFecharBtn">Fechar</button>
+      <button class="btn-primary" id="pendMarcarBtn">Marcar como lançadas</button>
+    </div>
+  </div>
+</div>
+
+<!-- SDK do Firebase (versão "compat", não exige ferramenta de build) -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  let db = null;
+  let items = {}; // id -> item data
+  let editingId = null;
+  let currentFilter = "all";
+  let sortMode = "az";
+  let searchTerm = "";
+  let currentView = "list";
+  let movements = [];
+  let pendentesOlostech = []; // baixas da Enfermagem ainda não lançadas no Olostech (com _id do documento)
+
+  const el = (id) => document.getElementById(id);
+  const itemList = el("itemList");
+  const emptyState = el("emptyState");
+  const subtitle = el("subtitle");
+  const toastEl = el("toast");
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    setTimeout(() => toastEl.classList.remove("show"), 1800);
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement("div");
+    d.textContent = str == null ? "" : String(str);
+    return d.innerHTML;
+  }
+
+  function statusFor(item) {
+    const qty = Number(item.qty) || 0;
+    const min = Number(item.min) || 0;
+    if (qty <= 0) return "zero";
+    if (min > 0 && qty <= min) return "low";
+    return "ok";
+  }
+
+  function itemRowHtml(it, dentroEnf) {
+    const st = statusFor(it);
+    // Só os problemas ganham selo — "OK" é o normal e não precisa de cor
+    const selo = st === "zero" ? '<span class="badge badge-zero">Zerado</span>'
+      : st === "low" ? '<span class="badge badge-low">Baixo</span>' : "";
+    return `
+      <div class="item" data-item-row="${it.id}">
+        <div class="item-main">
+          <div class="item-name">${escapeHtml(it.name)}${selo}${it.enfermagem && !dentroEnf ? '<span class="badge badge-enf">Uso exclusivo Enfermagem</span>' : ""}</div>
+          <div class="item-meta">${escapeHtml(it.unit || "un")}${it.code ? " · cód. " + escapeHtml(it.code) : ""}${it.min ? " · mín. " + escapeHtml(String(it.min)) : ""}${it.notes ? " · " + escapeHtml(it.notes) : ""}${Number.isFinite(it._dias) && it._dias >= 0 ? ` · <span class="dura">dura ≈ ${it._dias < 1 ? "menos de 1 dia" : Math.round(it._dias) + " dia" + (Math.round(it._dias) === 1 ? "" : "s")}</span>` : ""}</div>
+        </div>
+        <div class="qty-value qty-${st}">${Number(it.qty) || 0}</div>
+        <div class="item-actions">
+          <button class="icon-btn" data-action="edit" data-id="${it.id}" aria-label="Editar ${escapeHtml(it.name)}" title="Editar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg></button>
+        </div>
+      </div>
+    `;
+  }
+
+  function semAcento(s) {
+    return String(s == null ? "" : s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+  // Busca por parte do nome (ignorando acentos e maiúsculas) ou pelo código Olostech
+  function combinaBusca(it, termo) {
+    // cada palavra digitada precisa aparecer, em qualquer ordem ("dexa 2" acha "DEXAMETASONA 2 MG")
+    const palavras = semAcento(termo).split(/\s+/).filter(Boolean);
+    if (!palavras.length) return true;
+    const alvo = semAcento(it.name) + " " + semAcento(it.code);
+    return palavras.every((p) => alvo.includes(p));
+  }
+
+  // Ordem da lista: A–Z, Z–A ou mais urgentes
+  const MODOS_ORDEM = { az: "A–Z", za: "Z–A", urg: "Urgentes" };
+  const PROXIMO_MODO = { az: "za", za: "urg", urg: "az" };
+
+  // Consumo (saídas por uso) nos últimos "baseDias", limitado ao histórico que existe
+  function consumoRecente(baseDias) {
+    const agora = Date.now();
+    const primeiro = movements.length ? Math.min(...movements.map((m) => m.ts)) : agora;
+    const diasHist = Math.max(1, (agora - primeiro) / 86400000);
+    const diasBase = Math.min(baseDias, diasHist);
+    const corte = agora - diasBase * 86400000;
+    const consumo = {};
+    movements.forEach((m) => {
+      if (m.ts >= corte && isConsumo(m)) consumo[m.itemId] = (consumo[m.itemId] || 0) + -m.delta;
+    });
+    return { diasHist, diasBase, corte, consumo };
+  }
+
+  function ordenarItens(lista, modo) {
+    if (modo === "urg") {
+      // zerados primeiro; depois quem acaba antes; sem consumo recente vai para o fim
+      const { diasBase, consumo } = consumoRecente(30);
+      lista.forEach((it) => {
+        const q = Number(it.qty) || 0;
+        it._dias = q <= 0 ? -1 : consumo[it.id] ? q / (consumo[it.id] / diasBase) : Infinity;
+      });
+      const peso = (it) => (statusFor(it) === "low" ? 0 : 1);
+      return lista.sort((a, b) => (a._dias - b._dias) || (peso(a) - peso(b)) || a.name.localeCompare(b.name, "pt-BR"));
+    }
+    return lista.sort((a, b) => {
+      const cmp = a.name.localeCompare(b.name, "pt-BR");
+      return modo === "za" ? -cmp : cmp;
+    });
+  }
+
+  function getFiltered() {
+    const list = Object.entries(items).map(([id, data]) => ({ id, ...data }));
+    let filtered = list.filter((it) => {
+      if (!combinaBusca(it, searchTerm)) return false;
+      const st = statusFor(it);
+      if (currentFilter === "low" && st !== "low") return false;
+      if (currentFilter === "zero" && st !== "zero") return false;
+      return true;
+    });
+    return ordenarItens(filtered, sortMode);
+  }
+
+  function renderKpis() {
+    const list = Object.values(items);
+    const weekAgo = Date.now() - 7 * 86400000;
+    const comSaida = new Set(movements.filter((m) => m.delta < 0 && m.ts >= weekAgo).map((m) => m.itemId)).size;
+    const cards = [
+      { cls: "k-white", label: "Itens", short: "Itens", value: list.length, filter: "all" },
+      { cls: "k-yellow", label: "Estoque baixo", short: "Baixo", value: list.filter((it) => statusFor(it) === "low").length, filter: "low" },
+      { cls: "k-red", label: "Zerados", short: "Zerados", value: list.filter((it) => statusFor(it) === "zero").length, filter: "zero" },
+      { cls: "k-cyan", label: "Com saída (7 dias)", short: "Saída 7d", value: comSaida, view: "painel" },
+    ];
+    el("kpis").innerHTML = cards.map((c) =>
+      `<button class="kpi clickable ${c.cls}" ${c.filter ? `data-kfilter="${c.filter}"` : `data-kview="${c.view}"`}>
+        <div class="kpi-label"><span class="kl-full">${c.label}</span><span class="kl-short">${c.short}</span></div>
+        <div class="kpi-value">${c.value}</div>
+      </button>`).join("");
+  }
+
+  function render() {
+    renderKpis();
+    const list = Object.values(items);
+    const filtered = getFiltered();
+
+    const showPainel = currentView === "painel";
+    itemList.style.display = showPainel ? "none" : "";
+    el("geralPainelPanel").style.display = showPainel ? "block" : "none";
+    el("geralFiltersRow").style.display = showPainel ? "none" : "flex";
+
+    if (showPainel) {
+      emptyState.style.display = "none";
+      renderGeralPainel();
+      return;
+    }
+
+    itemList.innerHTML = "";
+    emptyState.style.display = filtered.length === 0 ? "block" : "none";
+
+    filtered.forEach((it) => {
+      itemList.insertAdjacentHTML("beforeend", itemRowHtml(it));
+    });
+  }
+
+  async function logMovement(itemId, name, qtyBefore, qtyAfter, source) {
+    if (!db || qtyBefore === qtyAfter) return;
+    try {
+      await db.collection("movimentos").add({
+        itemId, name,
+        qtyBefore, qtyAfter,
+        delta: qtyAfter - qtyBefore,
+        ts: Date.now(),
+        source,
+      });
+    } catch (e) { /* estatística é auxiliar — não bloqueia o fluxo principal */ }
+  }
+
+  // Saída que conta como consumo para o CMM: Perda, Vencimento e Ajuste não são uso.
+  function isConsumo(m) {
+    return m.delta < 0 && (!m.tipo || m.tipo === "Saída");
+  }
+
+  // Ranking dos mais consumidos, com consumo médio mensal (CMM).
+  // diasBase = dias realmente cobertos pelo histórico (nunca mais que o período escolhido).
+  function rankingConsumoHtml(movs, diasBase, limite, chaveVerMais, todos) {
+    const byItem = {};
+    movs.filter(isConsumo).forEach((m) => {
+      if (!byItem[m.itemId]) byItem[m.itemId] = { name: m.name, saida: 0, last: m.ts };
+      byItem[m.itemId].saida += -m.delta;
+      byItem[m.itemId].last = Math.max(byItem[m.itemId].last, m.ts);
+    });
+    const rows = Object.values(byItem).sort((a, b) => b.saida - a.saida);
+    if (!rows.length) return `<div class="chart-sub">Nenhuma saída registrada nesse período.</div>`;
+    const meses = Math.max(diasBase / 30, 1 / 30);
+    const mostrar = todos ? rows : rows.slice(0, limite);
+    return mostrar.map((r, i) => `
+        <div class="stats-row">
+          <div class="stats-rank ${i < 3 ? "top" : ""}">${i + 1}º</div>
+          <div class="stats-name">
+            <div>${escapeHtml(r.name)}</div>
+            <div class="stats-meta">última saída: ${new Date(r.last).toLocaleDateString("pt-BR")}</div>
+            <div class="stats-bar"><i style="width:${Math.max(3, Math.round((r.saida / rows[0].saida) * 100))}%"></i></div>
+          </div>
+          <div class="stats-value">
+            <div class="stats-saida">−${r.saida}</div>
+            <div class="stats-cmm">≈ ${(r.saida / meses).toFixed(1)}/mês</div>
+          </div>
+        </div>`).join("") +
+      (rows.length > limite ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="${chaveVerMais}">${todos ? `Mostrar só os ${limite} primeiros` : `Ver todos os ${rows.length} itens`}</button>` : "");
+  }
+
+  function openModal(id) {
+    editingId = id || null;
+    el("modalTitle").textContent = id ? "Editar item" : "Novo item";
+    el("deleteBtn").style.display = id ? "block" : "none";
+    // Em item já existente a quantidade só muda por importação (ou pelo registro da Enfermagem);
+    // em item novo é preciso informar o estoque inicial.
+    el("fieldQty").readOnly = !!id;
+    el("fieldQty").title = id ? "A quantidade é atualizada apenas por importação" : "Informe o estoque inicial";
+    if (id && items[id]) {
+      const it = items[id];
+      el("fieldName").value = it.name || "";
+      el("fieldQty").value = it.qty ?? "";
+      el("fieldUnit").value = it.unit || "";
+      el("fieldMin").value = it.min ?? "";
+      el("fieldNotes").value = it.notes || "";
+      el("fieldCode").value = it.code || "";
+    } else {
+      el("fieldName").value = "";
+      el("fieldQty").value = "";
+      el("fieldUnit").value = "";
+      el("fieldMin").value = "";
+      el("fieldNotes").value = "";
+      el("fieldCode").value = "";
+    }
+    el("modalBackdrop").style.display = "flex";
+  }
+
+  function closeModal() {
+    el("modalBackdrop").style.display = "none";
+    editingId = null;
+  }
+
+  async function saveItem() {
+    const name = el("fieldName").value.trim();
+    if (!name) { showToast("Digite o nome do item"); return; }
+    const qty = Math.max(0, parseInt(el("fieldQty").value, 10) || 0);
+    const unit = el("fieldUnit").value.trim();
+    const min = Math.max(0, parseInt(el("fieldMin").value, 10) || 0);
+    const notes = el("fieldNotes").value.trim();
+    const code = el("fieldCode").value.trim();
+    const data = { name, unit, min, notes, code, updatedAt: Date.now() };
+
+    if (!db) { showToast("Sem conexão com o banco"); return; }
+    try {
+      if (editingId) {
+        // Não regrava "qty": o valor do formulário pode estar desatualizado se
+        // houve importação ou baixa da Enfermagem com o modal aberto.
+        await db.collection("estoque").doc(editingId).update(data);
+      } else {
+        await db.collection("estoque").add({ ...data, qty });
+      }
+      closeModal();
+      showToast("Salvo");
+    } catch (e) {
+      showToast("Erro ao salvar");
+    }
+  }
+
+  async function deleteItem() {
+    if (!editingId || !db) return;
+    const nome = items[editingId] ? items[editingId].name : "este item";
+    if (!confirm(`Excluir "${nome}"? Essa ação não pode ser desfeita.`)) return;
+    try {
+      await db.collection("estoque").doc(editingId).delete();
+      closeModal();
+      showToast("Item excluído");
+    } catch (e) {
+      showToast("Erro ao excluir");
+    }
+  }
+
+  // --- Import from Olostech report (código-based, from internal PDF) ---
+  // Uma linha completa do relatório: código, nome, unidade, situação, data, saldo e valor
+  const CODED_LINE_RE = /^(\d{3,6})\s+(.+?)\s+([A-Za-zÀ-ÿ.\/]+)\s+(Ativo|Inativo)\s+(\d{2}\/\d{2}\/\d{4})\s+([\d.]+)\s+([\d.,]+)\s*$/;
+
+  function parseCodedReport(mergedLines) {
+    const lineRe = CODED_LINE_RE;
+    const results = [];
+    for (const line of mergedLines) {
+      const m = line.match(lineRe);
+      if (!m) continue;
+      const [, code, name, unit, , , saldoRaw] = m;
+      const qty = parseInt(saldoRaw.replace(/\./g, ""), 10) || 0;
+      results.push({ code, name: name.trim(), unit: unit.trim(), qty });
+    }
+    return results;
+  }
+
+  // --- Import from public "Consulta Saldos de Medicamentos" page (no código) ---
+  function splitNameUnit(raw) {
+    const idx = raw.lastIndexOf(" - ");
+    if (idx > -1) {
+      const tail = raw.slice(idx + 3).trim();
+      if (/^[A-Za-zÀ-ÿ.]{1,10}$/.test(tail)) {
+        return { name: raw.slice(0, idx).trim(), unit: tail };
+      }
+    }
+    return { name: raw.trim(), unit: "" };
+  }
+
+  function parsePublicConsulta(mergedLines) {
+    const skipRe = /(Consulta Saldos|Estabelecimento de Sa|M[oó]dulo Publica|PUBLICO\d|^Medicamento\s+Saldo|^https?:\/\/|^\d+\/\d+$|Prefeitura de|Secretaria Municipal|^Medicamento:)/i;
+    // Preferência: "NOME - unid QTD ESTABELECIMENTO" (o nome pode ter números, ex. "500 MG").
+    const unitLineRe = /^(.+\s-\s[A-Za-zÀ-ÿ.]{1,10})\s+(\d+)\s+([A-ZÀ-Ý].+)$/;
+    const lineRe = /^(.+?)\s+(\d+)\s+([A-ZÀ-Ý].+)$/;
+    const results = [];
+    for (const line of mergedLines) {
+      if (skipRe.test(line)) continue;
+      const m = line.match(unitLineRe) || line.match(lineRe);
+      if (!m) continue;
+      const rawName = m[1].trim();
+      const qty = parseInt(m[2], 10) || 0;
+      const { name, unit } = splitNameUnit(rawName);
+      if (!name) continue;
+      results.push({ code: null, name, unit, qty });
+    }
+    return results;
+  }
+
+  function normalizeName(s) {
+    return (s || "")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function slugify(s) {
+    return normalizeName(s).replace(/\s+/g, "_").slice(0, 60) || "item";
+  }
+
+  function parseOlostechReport(rawText) {
+    const rawLines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    // Junta itens cujo nome quebrou em mais de uma linha. Um item fica "aberto" até a
+    // linha completa (código … unidade Ativo data saldo valor) ser reconhecida.
+    // Linhas soltas — cabeçalho, rodapé de página, totais — são ignoradas, em vez de
+    // grudarem no item anterior e fazerem ele ser descartado.
+    const merged = [];
+    let aberto = false;
+    for (const line of rawLines) {
+      const comecaComCodigo = /^\d{3,6}\s/.test(line);
+      if (aberto) {
+        const junto = merged[merged.length - 1] + " " + line;
+        // continuação do nome (pode começar com número, ex.: "1000 ML amp Ativo ...")
+        if (!comecaComCodigo || CODED_LINE_RE.test(junto)) {
+          merged[merged.length - 1] = junto;
+          aberto = !CODED_LINE_RE.test(junto);
+          continue;
+        }
+      }
+      if (comecaComCodigo) {
+        merged.push(line);
+        aberto = !CODED_LINE_RE.test(line);
+      }
+    }
+    const coded = parseCodedReport(merged);
+    if (coded.length) return { items: coded, format: "coded" };
+    // A consulta pública não tem código no início da linha: usa as linhas originais.
+    const pub = parsePublicConsulta(rawLines);
+    return { items: pub, format: "public" };
+  }
+
+  // Baixas da Enfermagem ainda não lançadas no Olostech ("pendenteOlostech").
+  // A farmácia lança no Olostech alguns dias depois; até lá o relatório traz o saldo
+  // de ANTES da baixa. Na importação, o saldo do relatório é descontado dessas baixas
+  // pendentes — assim a importação nunca desfaz o que a Enfermagem registrou.
+  // Quando a farmácia lança no Olostech, marca a baixa como "lançada" no site.
+  function pendentePorItem() {
+    const soma = {};
+    pendentesOlostech.forEach((m) => { soma[m.itemId] = (soma[m.itemId] || 0) + (Number(m.delta) || 0); });
+    return soma;
+  }
+
+  // Localiza o documento do item de uma linha do relatório (mesma regra da importação)
+  function docIdDoRelatorio(it) {
+    let docId = it.code;
+    if (docId && !items[docId]) {
+      // Item cadastrado à mão com o mesmo código Olostech: atualiza ele em vez de duplicar
+      const byCode = Object.entries(items).find(([, data]) => data.code === it.code);
+      if (byCode) docId = byCode[0];
+    }
+    if (!docId) {
+      // Sem código: procura um item existente pelo nome normalizado
+      const norm = normalizeName(it.name);
+      const existing = Object.entries(items).find(([, data]) => normalizeName(data.name) === norm);
+      docId = existing ? existing[0] : "pub_" + slugify(it.name);
+    }
+    return docId;
+  }
+
+  function updateImportPreview() {
+    const { items: parsed, format } = parseOlostechReport(el("importText").value);
+    if (!parsed.length) {
+      el("importPreview").textContent = "Nenhum item reconhecido ainda — cole o texto do relatório.";
+      return;
+    }
+    const label = format === "coded" ? "com código Olostech" : "consulta pública (sem código, relacionado pelo nome)";
+    const pend = pendentePorItem();
+    const descontos = [...new Set(parsed.map(docIdDoRelatorio))]
+      .filter((id) => pend[id])
+      .map((id) => `${escapeHtml(items[id] ? items[id].name : id)} (${pend[id] > 0 ? "+" : ""}${pend[id]})`);
+    const aviso = descontos.length
+      ? `<div class="import-aviso">Baixas da Enfermagem ainda não lançadas no Olostech serão descontadas do saldo do relatório em ${descontos.length} item(ns): ${descontos.join(", ")}.
+         Se você já lançou alguma delas no Olostech, marque como lançada antes de importar.</div>`
+      : "";
+    el("importPreview").innerHTML = `${parsed.length} item(ns) reconhecido(s) — formato: ${label}.${aviso}`;
+  }
+
+  async function confirmImport() {
+    const { items: parsed } = parseOlostechReport(el("importText").value);
+    if (!parsed.length) { showToast("Nenhum item reconhecido"); return; }
+    if (!db) { showToast("Sem conexão com o banco"); return; }
+    let ok = 0, fail = 0, descontados = 0;
+    const pend = pendentePorItem();
+    const usedIds = new Set();
+    for (const it of parsed) {
+      try {
+        const docId = docIdDoRelatorio(it);
+        if (usedIds.has(docId)) continue;
+        usedIds.add(docId);
+        const prev = items[docId] || {};
+        const qtyBefore = Number(prev.qty) || 0;
+        const qtyFinal = Math.max(0, it.qty + (pend[docId] || 0));
+        if (pend[docId]) descontados++;
+        await db.collection("estoque").doc(docId).set({
+          name: prev.name || it.name,
+          qty: qtyFinal,
+          unit: it.unit || prev.unit || "",
+          min: prev.min || 0,
+          notes: prev.notes || (it.code ? "" : "via consulta pública (sem código Olostech)"),
+          code: it.code || prev.code || "",
+          updatedAt: Date.now(),
+        }, { merge: true });
+        logMovement(docId, it.name || prev.name, qtyBefore, qtyFinal, "import");
+        ok++;
+      } catch (e) { fail++; }
+    }
+    closeImportModal();
+    showToast(`Importado: ${ok}${descontados ? " · " + descontados + " com baixa pendente da Enfermagem" : ""}${fail ? " · falhas: " + fail : ""}`);
+  }
+
+  // ----- Baixas para lançar no Olostech -----
+  function renderPendAviso() {
+    const n = pendentesOlostech.length;
+    el("pendAviso").hidden = n === 0;
+    el("pendAvisoTexto").textContent = `${n} baixa${n === 1 ? "" : "s"} da Enfermagem para lançar no Olostech`;
+    if (el("pendBackdrop").style.display === "flex") renderPendLista();
+  }
+
+  function renderPendLista() {
+    const lista = [...pendentesOlostech].sort((a, b) => a.ts - b.ts);
+    const box = el("pendLista");
+    if (!lista.length) {
+      box.innerHTML = `<div class="carrinho-vazio">Nenhuma baixa pendente. Tudo lançado no Olostech.</div>`;
+      el("pendMarcarBtn").disabled = true;
+      return;
+    }
+    // total por medicamento, para lançar no Olostech de uma vez
+    const totais = {};
+    lista.forEach((m) => {
+      if (!totais[m.itemId]) totais[m.itemId] = { nome: m.name, q: 0 };
+      totais[m.itemId].q += Number(m.delta) || 0;
+    });
+    box.innerHTML = `
+      <div class="pend-totais">${Object.values(totais).map((t) => `<span><b>${escapeHtml(t.nome)}</b> ${t.q > 0 ? "+" : "−"}${Math.abs(t.q)}</span>`).join("")}</div>
+      <label class="pend-todos"><input type="checkbox" id="pendTodos" checked /> Selecionar todas</label>
+      <div class="hist-wrap"><table class="hist-table pend-tabela">
+        <thead><tr><th></th><th>Data</th><th>Medicamento</th><th>Tipo</th><th>Qtd.</th><th>Responsável</th></tr></thead>
+        <tbody>${lista.map((m) => `<tr>
+          <td><input type="checkbox" class="pend-check" value="${m._id}" checked aria-label="Selecionar ${escapeHtml(m.name)}" /></td>
+          <td>${new Date(m.ts).toLocaleDateString("pt-BR")}</td>
+          <td>${escapeHtml(m.name)}</td>
+          <td>${escapeHtml(m.tipo || "Saída")}</td>
+          <td class="${m.delta < 0 ? "hist-out" : "hist-in"}">${m.delta > 0 ? "+" : "−"}${Math.abs(m.delta)}</td>
+          <td>${escapeHtml(m.responsavel || "—")}</td>
+        </tr>`).join("")}</tbody>
+      </table></div>`;
+    el("pendMarcarBtn").disabled = false;
+  }
+
+  function abrirPendentes() { renderPendLista(); el("pendBackdrop").style.display = "flex"; }
+  function fecharPendentes() { el("pendBackdrop").style.display = "none"; }
+
+  async function marcarLancadas() {
+    const ids = [...document.querySelectorAll(".pend-check:checked")].map((c) => c.value);
+    if (!ids.length) { showToast("Selecione pelo menos uma baixa"); return; }
+    if (!db) { showToast("Sem conexão com o banco"); return; }
+    el("pendMarcarBtn").disabled = true;
+    try {
+      const lote = db.batch();
+      const agora = Date.now();
+      ids.forEach((id) => lote.update(db.collection("movimentos").doc(id), { pendenteOlostech: false, lancadoOlostechEm: agora }));
+      await lote.commit();
+      showToast(`${ids.length} baixa${ids.length === 1 ? "" : "s"} marcada${ids.length === 1 ? "" : "s"} como lançada${ids.length === 1 ? "" : "s"}`);
+      if (ids.length === pendentesOlostech.length) fecharPendentes();
+    } catch (e) {
+      showToast("Erro ao salvar");
+    } finally {
+      el("pendMarcarBtn").disabled = false;
+    }
+  }
+
+  el("pendVerBtn").addEventListener("click", abrirPendentes);
+  el("pendFecharBtn").addEventListener("click", fecharPendentes);
+  el("pendMarcarBtn").addEventListener("click", marcarLancadas);
+  el("pendBackdrop").addEventListener("click", (e) => { if (e.target.id === "pendBackdrop") fecharPendentes(); });
+  el("pendLista").addEventListener("change", (e) => {
+    if (e.target.id === "pendTodos") document.querySelectorAll(".pend-check").forEach((c) => { c.checked = e.target.checked; });
+  });
+
+  function openImportModal() {
+    el("importText").value = "";
+    el("importPreview").textContent = "";
+    el("importBackdrop").style.display = "flex";
+  }
+  function closeImportModal() {
+    el("importBackdrop").style.display = "none";
+  }
+
+  // Menu "⋯": abre/fecha, fecha ao escolher, ao clicar fora ou com Esc
+  function fecharMenus(exceto) {
+    document.querySelectorAll(".mais").forEach((m) => {
+      if (m === exceto) return;
+      m.querySelector(".mais-menu").hidden = true;
+      m.querySelector(".mais-btn").setAttribute("aria-expanded", "false");
+    });
+  }
+  document.querySelectorAll(".mais").forEach((m) => {
+    const btn = m.querySelector(".mais-btn"), menu = m.querySelector(".mais-menu");
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fecharMenus(m);
+      menu.hidden = !menu.hidden;
+      btn.setAttribute("aria-expanded", String(!menu.hidden));
+      if (!menu.hidden) menu.querySelector("button").focus();
+    });
+    menu.addEventListener("click", () => fecharMenus());
+  });
+  document.addEventListener("click", (e) => { if (!e.target.closest(".mais")) fecharMenus(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharMenus(); });
+
+  el("importBtn").addEventListener("click", openImportModal);
+  el("importCancelBtn").addEventListener("click", closeImportModal);
+  el("importConfirmBtn").addEventListener("click", confirmImport);
+  el("importText").addEventListener("input", updateImportPreview);
+  el("importBackdrop").addEventListener("click", (e) => {
+    if (e.target.id === "importBackdrop") closeImportModal();
+  });
+
+  // Event wiring
+  itemList.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    if (action === "edit") openModal(id);
+  });
+
+  el("addFab").addEventListener("click", () => (currentSection === "enf" ? openEnfModal() : openModal(null)));
+  el("cancelBtn").addEventListener("click", closeModal);
+  el("saveBtn").addEventListener("click", saveItem);
+  el("deleteBtn").addEventListener("click", deleteItem);
+  el("modalBackdrop").addEventListener("click", (e) => {
+    if (e.target.id === "modalBackdrop") closeModal();
+  });
+
+  el("searchInput").addEventListener("input", (e) => {
+    searchTerm = e.target.value;
+    render();
+  });
+
+  el("kpis").addEventListener("click", (e) => {
+    const k = e.target.closest(".kpi");
+    if (!k) return;
+    if (k.dataset.kfilter) {
+      document.querySelector(`.tab[data-view="list"]`).click();
+      document.querySelector(`.chip[data-filter="${k.dataset.kfilter}"]`).click();
+    } else {
+      document.querySelector(`.tab[data-view="${k.dataset.kview}"]`).click();
+    }
+    window.scrollTo({ top: document.querySelector(".card").offsetTop - 10, behavior: "smooth" });
+  });
+
+  document.querySelectorAll(".chip[data-filter]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".chip[data-filter]").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      currentFilter = chip.dataset.filter;
+      render();
+    });
+  });
+
+  el("sortBtn").addEventListener("click", () => {
+    sortMode = PROXIMO_MODO[sortMode];
+    el("sortBtn").textContent = MODOS_ORDEM[sortMode];
+    render();
+  });
+
+  document.querySelectorAll("[data-view]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("[data-view]").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentView = tab.dataset.view;
+      render();
+    });
+  });
+
+  el("printBtn").addEventListener("click", () => {
+    el("pageTitle").setAttribute("data-print-date", new Date().toLocaleDateString("pt-BR"));
+    window.print();
+  });
+
+
+  async function init() {
+    try {
+      if (!window.firebase || !window.firebaseConfig || window.firebaseConfig.apiKey === "SUA_API_KEY_AQUI") {
+        throw new Error("Firebase não configurado");
+      }
+      if (!firebase.apps.length) firebase.initializeApp(window.firebaseConfig);
+      db = firebase.firestore();
+    } catch (e) {
+      db = null;
+    }
+    if (!db) {
+      subtitle.textContent = "Banco de dados não configurado — edite firebase-config.js (veja o README.md).";
+      render();
+      return;
+    }
+    subtitle.textContent = "Estoque — atualiza em tempo real";
+    const col = db.collection("estoque");
+    col.onSnapshot(
+      (snap) => {
+        const next = {};
+        snap.docs.forEach((d) => { next[d.id] = d.data(); });
+        items = next;
+        render();
+        renderEnf();
+      },
+      (err) => {
+        subtitle.textContent = "Erro de conexão com o banco. Verifique as regras do Firestore e recarregue a página.";
+      }
+    );
+    // Só os últimos 90 dias de histórico (o que os gráficos usam): cada abertura do site
+    // lê menos documentos e o projeto continua dentro do plano grátis do Firebase.
+    const DIAS_HISTORICO = 90;
+    const movCol = db.collection("movimentos").where("ts", ">=", Date.now() - DIAS_HISTORICO * 86400000);
+    movCol.onSnapshot(
+      (snap) => {
+        movements = snap.docs.map((d) => d.data());
+        renderKpis();
+        if (currentView === "painel" && currentSection === "geral") renderGeralPainel();
+        renderEnf();
+      },
+      () => { /* estatística é auxiliar — falha aqui não impede o uso do estoque */ }
+    );
+    db.collection("movimentos").where("pendenteOlostech", "==", true).onSnapshot(
+      (snap) => {
+        pendentesOlostech = snap.docs.map((d) => ({ _id: d.id, ...d.data() }));
+        renderPendAviso();
+      },
+      () => { /* sem a lista de pendentes, a importação não desconta nada — o resto funciona */ }
+    );
+  }
+
+  // ============================================================
+  // Enfermagem — uso exclusivo (reaproveita "estoque" e "movimentos")
+  // Mesma estrutura visual e de navegação da aba Estoque Geral.
+  // ============================================================
+  const ENF_CODES = [
+    "33520", "33531", "33702", "33713", "36277", "33972", "34057", "48298",
+    "34192", "49257", "34238", "34443", "34465", "34556", "34603", "34705",
+    "34668", "34657", "48991", "33927", "35037", "35093", "35107", "47728",
+    "35117", "35173", "35184", "33916", "52354", "49451", "37612", "35355",
+    "35413", "35536", "37815", "35966", "47717", "36132", "36165", "36176",
+    "36245", "36288", "36405", "53866",
+  ];
+
+  let currentSection = "geral";
+  let enfFilter = "all";
+  let enfSortMode = "az";
+  let enfSearchTerm = "";
+  let enfView = "list";
+  let enfHistPeriod = 30;
+  let enfSemanas = 4;
+
+  function enfItems() {
+    return Object.entries(items)
+      .filter(([id, it]) => it.enfermagem === true || ENF_CODES.includes(id))
+      .map(([id, it]) => ({ id, ...it }));
+  }
+
+  function enfMovementsAll() {
+    const ids = new Set(enfItems().map((it) => it.id));
+    return movements.filter((m) => ids.has(m.itemId));
+  }
+
+  function enfGetFiltered() {
+    let filtered = enfItems().filter((it) => {
+      if (!combinaBusca(it, enfSearchTerm)) return false;
+      const st = statusFor(it);
+      if (enfFilter === "low" && st !== "low") return false;
+      if (enfFilter === "zero" && st !== "zero") return false;
+      return true;
+    });
+    return ordenarItens(filtered, enfSortMode);
+  }
+
+  function renderEnfKpis() {
+    const list = enfItems();
+    const weekAgo = Date.now() - 7 * 86400000;
+    const comSaida = new Set(enfMovementsAll().filter((m) => m.delta < 0 && m.ts >= weekAgo).map((m) => m.itemId)).size;
+    const cards = [
+      { cls: "k-white", label: "Itens", short: "Itens", value: list.length, filter: "all" },
+      { cls: "k-yellow", label: "Estoque baixo", short: "Baixo", value: list.filter((it) => statusFor(it) === "low").length, filter: "low" },
+      { cls: "k-red", label: "Zerados", short: "Zerados", value: list.filter((it) => statusFor(it) === "zero").length, filter: "zero" },
+      { cls: "k-magenta", label: "Com saída (7 dias)", short: "Saída 7d", value: comSaida, view: "painel" },
+    ];
+    el("enfKpis").innerHTML = cards.map((c) =>
+      `<button class="kpi clickable ${c.cls}" ${c.filter ? `data-enfkfilter="${c.filter}"` : `data-enfkview="${c.view}"`}>
+        <div class="kpi-label"><span class="kl-full">${c.label}</span><span class="kl-short">${c.short}</span></div>
+        <div class="kpi-value">${c.value}</div>
+      </button>`).join("");
+  }
+
+
+  function renderEnfHist() {
+    const cutoff = enfHistPeriod > 0 ? Date.now() - enfHistPeriod * 24 * 60 * 60 * 1000 : 0;
+    // Só as baixas lançadas pela Enfermagem — as movimentações vindas da importação
+    // do Olostech não têm responsável e poluiriam o "quem pegou o quê".
+    const rows = enfMovementsAll()
+      .filter((m) => m.source === "enfermagem" && m.ts >= cutoff)
+      .sort((a, b) => b.ts - a.ts);
+
+    const body = el("enfHistBody");
+    if (!rows.length) {
+      body.innerHTML = `<div class="hist-empty">Nenhuma movimentação lançada pela Enfermagem nesse período.<br>Use o botão "Registrar" para dar baixa em um medicamento.</div>`;
+      return;
+    }
+    body.innerHTML = `<div class="hist-wrap"><table class="hist-table">
+      <thead><tr>
+        <th>Data</th><th>Medicamento</th><th>Tipo</th><th>Qtd.</th>
+        <th>Saldo ant.</th><th>Saldo após</th><th>Responsável</th><th>Olostech</th><th>Observação</th>
+      </tr></thead><tbody>` +
+      rows.map((m) => {
+        const cls = m.delta < 0 ? "hist-out" : "hist-in";
+        const sinal = m.delta > 0 ? "+" : "−";
+        return `<tr>
+          <td>${new Date(m.ts).toLocaleDateString("pt-BR")} ${new Date(m.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</td>
+          <td>${escapeHtml(m.name)}</td>
+          <td>${escapeHtml(m.tipo || (m.delta >= 0 ? "Entrada" : "Saída"))}</td>
+          <td class="${cls}">${sinal}${Math.abs(m.delta)}</td>
+          <td>${m.qtyBefore}</td>
+          <td>${m.qtyAfter}</td>
+          <td>${escapeHtml(m.responsavel || "—")}</td>
+          <td>${m.pendenteOlostech === true ? '<span class="badge badge-low">Pendente</span>' : m.pendenteOlostech === false ? '<span class="olo-ok">Lançado</span>' : "—"}</td>
+          <td class="obs">${escapeHtml(m.obs || "")}</td>
+        </tr>`;
+      }).join("") + `</tbody></table></div>`;
+  }
+
+  // ----- Painel de gráficos da Enfermagem -----
+  const DIA = 86400000;
+
+  // Início da semana (segunda-feira, 00:00) no fuso do navegador
+  function inicioSemana(ts) {
+    const d = new Date(ts);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.getTime();
+  }
+
+  function fmtDiaMes(ts) {
+    return new Date(ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  }
+
+  function hbarsHtml(linhas, unidade) {
+    const max = Math.max(...linhas.map((l) => l.valor), 1);
+    return linhas.map((l) => `
+      <div class="hb-row" tabindex="0" data-tip="${escapeHtml(`${l.nome}: ${l.valor} ${unidade}`)}">
+        <div class="hb-name">${escapeHtml(l.nome)}</div>
+        <div class="hb-track"><div class="hb-bar" style="width:${Math.max(1, (l.valor / max) * 100)}%"></div></div>
+        <div class="hb-val">${l.valor}</div>
+      </div>`).join("");
+  }
+
+  function renderEnfPainel() {
+    const body = el("enfPainelBody");
+    const semanaAtual = inicioSemana(Date.now());
+    // Semanas da mais antiga para a atual. setDate lida com horário de verão.
+    const semanas = [];
+    for (let i = enfSemanas - 1; i >= 0; i--) {
+      const d = new Date(semanaAtual);
+      d.setDate(d.getDate() - 7 * i);
+      semanas.push(d.getTime());
+    }
+    const idxSemana = new Map(semanas.map((s, i) => [s, i]));
+    const rotulo = (s) => (s === semanaAtual ? "atual" : fmtDiaMes(s));
+
+    const baixas = enfMovementsAll().filter((m) =>
+      m.source === "enfermagem" && m.delta < 0 && idxSemana.has(inicioSemana(m.ts)));
+    const usos = baixas.filter(isConsumo);
+
+    if (!baixas.length) {
+      body.innerHTML = `<div class="hist-empty">Ainda não há baixas da Enfermagem nas últimas ${enfSemanas} semanas.<br>Os gráficos aparecem conforme as baixas forem lançadas no botão "Registrar".</div>`;
+      return;
+    }
+
+    // 1) Uso total por semana
+    const totalSemana = semanas.map(() => 0);
+    usos.forEach((m) => { totalSemana[idxSemana.get(inicioSemana(m.ts))] += -m.delta; });
+    const maxSemana = Math.max(...totalSemana, 1);
+    const colunas = semanas.map((s, i) => {
+      const v = totalSemana[i];
+      const h = v ? Math.max(2, Math.round((v / maxSemana) * 100)) : 0;
+      const fim = new Date(s); fim.setDate(fim.getDate() + 6);
+      return `<div class="wk-col" tabindex="0" data-tip="${escapeHtml(`Semana ${fmtDiaMes(s)} a ${fmtDiaMes(fim.getTime())}: ${v} unidade(s) usadas`)}">
+          ${v ? `<div class="wk-val">${v}</div>` : ""}
+          <div class="wk-bar" style="height:${h}%"></div>
+        </div>`;
+    }).join("");
+
+    // 2) Mais usados por semana (mapa de calor)
+    const porMed = {};
+    usos.forEach((m) => {
+      if (!porMed[m.itemId]) porMed[m.itemId] = { nome: m.name, semanas: semanas.map(() => 0), total: 0 };
+      const q = -m.delta;
+      porMed[m.itemId].semanas[idxSemana.get(inicioSemana(m.ts))] += q;
+      porMed[m.itemId].total += q;
+    });
+    const ranking = Object.values(porMed).sort((a, b) => b.total - a.total);
+    const TOP = 10;
+    const linhasHeat = ranking.slice(0, TOP);
+    const maxCelula = Math.max(...linhasHeat.flatMap((r) => r.semanas), 1);
+    const primeiraBaixa = Math.min(...enfMovementsAll().filter((m) => m.source === "enfermagem").map((m) => m.ts));
+    const diasCobertos = Math.max(1, Math.min(enfSemanas * 7, (Date.now() - primeiraBaixa) / DIA));
+    const heatRows = linhasHeat.map((r) => `
+      <tr>
+        <td class="med">${escapeHtml(r.nome)}</td>
+        ${r.semanas.map((v, i) => {
+          if (!v) return `<td class="cell zero" data-tip="${escapeHtml(`${r.nome} — ${rotulo(semanas[i])}: nenhum uso`)}">·</td>`;
+          const pct = Math.round(14 + 86 * (v / maxCelula));
+          const cor = pct >= 80 ? "#1a0015" : "#fff";
+          return `<td class="cell" tabindex="0" style="background:color-mix(in srgb, var(--magenta) ${pct}%, #0a1018);color:${cor}" data-tip="${escapeHtml(`${r.nome} — ${rotulo(semanas[i])}: ${v} unidade(s)`)}">${v}</td>`;
+        }).join("")}
+        <td class="tot">${r.total}</td>
+        <td class="tot cmm">≈ ${(r.total / Math.max(diasCobertos / 30, 1 / 30)).toFixed(1)}</td>
+      </tr>`).join("");
+    const heat = usos.length ? `
+      <div class="heat-wrap"><table class="heat">
+        <thead><tr><th class="med"></th>${semanas.map((s) => `<th>${rotulo(s)}</th>`).join("")}<th style="text-align:right">Total</th><th style="text-align:right" title="Consumo médio mensal">Por mês</th></tr></thead>
+        <tbody>${heatRows}</tbody>
+      </table></div>
+      <div class="heat-legend">menos <i></i> mais</div>
+      ${ranking.length > TOP ? `<div class="chart-sub" style="margin-top:8px">Mostrando os ${TOP} mais usados de ${ranking.length} medicamentos.</div>` : ""}`
+      : `<div class="chart-sub">Nenhuma saída por uso nesse período (só perdas ou vencimentos).</div>`;
+
+    // 3) Baixas por tipo e por responsável
+    const porTipo = {};
+    baixas.forEach((m) => {
+      const t = m.tipo === "Saída" ? "Uso" : (m.tipo || "Uso");
+      porTipo[t] = (porTipo[t] || 0) + -m.delta;
+    });
+    const tipos = Object.entries(porTipo).map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor);
+
+    const porResp = {};
+    usos.forEach((m) => {
+      const r = m.responsavel && m.responsavel !== "—" ? m.responsavel : "Não informado";
+      porResp[r] = (porResp[r] || 0) + -m.delta;
+    });
+    let resp = Object.entries(porResp).map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor);
+    if (resp.length > 8) {
+      const resto = resp.slice(7).reduce((s, r) => s + r.valor, 0);
+      resp = [...resp.slice(0, 7), { nome: "Outros", valor: resto }];
+    }
+
+    body.innerHTML = `
+      <div class="chart-block">
+        <h3>Uso total por semana</h3>
+        <div class="chart-sub">Unidades usadas pela Enfermagem, somando todos os medicamentos.</div>
+        <div class="wk-chart">${colunas}</div>
+        <div class="wk-labels">${semanas.map((s) => `<span>${rotulo(s)}</span>`).join("")}</div>
+      </div>
+      <div class="chart-block">
+        <h3>Medicamentos mais usados por semana</h3>
+        <div class="chart-sub">Quanto mais forte a cor, mais foi usado naquela semana. "Por mês" é o consumo médio mensal (CMM). Semanas começam na segunda-feira.</div>
+        ${heat}
+      </div>
+      <div class="chart-block chart-pair">
+        <div>
+          <h3>Baixas por tipo</h3>
+          <div class="chart-sub">Uso, perda e vencimento, em unidades.</div>
+          ${hbarsHtml(tipos, "unidade(s)")}
+        </div>
+        <div>
+          <h3>Uso por responsável</h3>
+          <div class="chart-sub">Unidades usadas por quem registrou a baixa.</div>
+          ${resp.length ? hbarsHtml(resp, "unidade(s)") : `<div class="chart-sub">Nenhum uso no período.</div>`}
+        </div>
+      </div>`;
+  }
+
+  // Dica flutuante dos gráficos (mouse e teclado)
+  const chartTip = el("chartTip");
+  // Posiciona a dica acima (ou abaixo, se não couber) de um retângulo da tela
+  function posicionarDica(texto, r) {
+    chartTip.textContent = texto;
+    chartTip.style.borderColor = currentSection === "enf" ? "var(--magenta)" : "var(--cyan)";
+    chartTip.style.display = "block";
+    const w = chartTip.offsetWidth, h = chartTip.offsetHeight;
+    const x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8);
+    const y = r.top - h - 8 < 8 ? r.bottom + 8 : r.top - h - 8;
+    chartTip.style.left = x + "px";
+    chartTip.style.top = y + "px";
+  }
+  function mostrarDica(alvo) { posicionarDica(alvo.dataset.tip, alvo.getBoundingClientRect()); }
+  function esconderDica() { chartTip.style.display = "none"; }
+  ["enfPainelBody", "geralPainelBody"].forEach((corpo) => {
+    ["mouseover", "focusin"].forEach((ev) => el(corpo).addEventListener(ev, (e) => {
+      if (e.target.closest(".linha-box svg")) return; // o gráfico de linha cuida da própria dica
+      const alvo = e.target.closest("[data-tip]");
+      if (alvo) mostrarDica(alvo); else esconderDica();
+    }));
+    ["mouseleave", "focusout"].forEach((ev) => el(corpo).addEventListener(ev, esconderDica));
+  });
+  window.addEventListener("scroll", esconderDica, { passive: true });
+
+  // ----- Painel de gráficos do Estoque Geral -----
+  let geralBase = 30;          // dias de consumo usados na estimativa
+  let geralLinhaItem = null;   // item escolhido no histórico
+  let geralCobTodos = false;   // "ver todos" na lista de dias que dura
+  let geralBulTodos = false;   // "ver todos" no saldo x mínimo
+  let geralRankTodos = false;  // "ver todos" nos mais consumidos
+
+  function passoRedondo(max, partes) {
+    const bruto = Math.max(1, max / partes);
+    const pot = Math.pow(10, Math.floor(Math.log10(bruto)));
+    const n = bruto / pot;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pot;
+  }
+
+  function renderGeralPainel() {
+    const body = el("geralPainelBody");
+    const lista = Object.entries(items).map(([id, it]) => ({ id, ...it, qtd: Number(it.qty) || 0 }));
+    const agora = Date.now();
+
+    // 1) Situação geral
+    const cont = { ok: 0, low: 0, zero: 0 };
+    lista.forEach((it) => { cont[statusFor(it)]++; });
+    const total = lista.length || 1;
+    const sit = [
+      { k: "ok", nome: "OK", cor: "var(--lime)", v: cont.ok },
+      { k: "low", nome: "Estoque baixo", cor: "var(--amber)", v: cont.low },
+      { k: "zero", nome: "Zerado", cor: "var(--red)", v: cont.zero },
+    ].filter((s) => s.v > 0);
+    const sitHtml = `
+      <div class="sit-bar">${sit.map((s) => `<div tabindex="0" style="flex:${s.v};background:${s.cor}" data-tip="${s.nome}: ${s.v} item(ns) — ${Math.round((s.v / total) * 100)}%"></div>`).join("")}</div>
+      <div class="sit-legend">${sit.map((s) => `<span><i style="background:${s.cor}"></i>${s.nome} <b>${s.v}</b></span>`).join("")}</div>`;
+
+    // 2) Dias que o estoque dura (saldo ÷ consumo médio por dia)
+    const { diasHist, diasBase, corte, consumo } = consumoRecente(geralBase);
+    const cob = lista
+      .filter((it) => consumo[it.id] > 0)
+      .map((it) => {
+        const porDia = consumo[it.id] / diasBase;
+        return { ...it, porDia, dias: it.qtd / porDia };
+      })
+      .sort((a, b) => a.dias - b.dias);
+    const TETO = 90;
+    const corDias = (d) => (d <= 7 ? "var(--red)" : d <= 30 ? "var(--amber)" : "var(--lime)");
+    const textoDias = (d) => (d < 1 ? (d === 0 ? "zerado" : "< 1 dia") : d > TETO ? `${TETO}+ dias` : `${Math.round(d)} dia${Math.round(d) === 1 ? "" : "s"}`);
+    const cobMostrar = geralCobTodos ? cob : cob.slice(0, 15);
+    const cobHtml = cob.length ? `
+      ${cobMostrar.map((it) => `
+        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${it.name}: saldo ${it.qtd}, consumo ≈ ${it.porDia.toFixed(1)}/dia → ${textoDias(it.dias)}`)}">
+          <div class="hb-name">${escapeHtml(it.name)}</div>
+          <div class="hb-track"><div class="hb-bar" style="width:${Math.max(1, Math.min(it.dias, TETO) / TETO * 100)}%;background:${corDias(it.dias)}"></div></div>
+          <div class="cob-val"><b>${textoDias(it.dias)}</b></div>
+        </div>`).join("")}
+      ${cob.length > 15 ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="cob">${geralCobTodos ? "Mostrar só os 15 primeiros" : `Ver todos os ${cob.length} itens`}</button>` : ""}
+      <div class="sit-legend" style="font-size:0.78rem;color:var(--text-muted)">
+        <span><i style="background:var(--red)"></i>até 7 dias</span>
+        <span><i style="background:var(--amber)"></i>8 a 30 dias</span>
+        <span><i style="background:var(--lime)"></i>mais de 30 dias</span>
+      </div>`
+      : `<div class="chart-sub">Ainda não há saídas registradas nesse período para calcular.</div>`;
+    const avisoHist = diasHist < geralBase
+      ? ` O histórico tem só ${Math.max(1, Math.round(diasHist))} dia(s) — a estimativa fica mais confiável com o tempo.`
+      : "";
+
+    // 3) Saldo x estoque mínimo
+    const comMin = lista
+      .filter((it) => Number(it.min) > 0)
+      .map((it) => ({ ...it, min: Number(it.min), razao: it.qtd / Number(it.min) }))
+      .sort((a, b) => a.razao - b.razao);
+    const bulMostrar = geralBulTodos ? comMin : comMin.slice(0, 15);
+    const bulHtml = comMin.length ? `
+      ${bulMostrar.map((it) => {
+        const escala = Math.max(it.qtd, it.min * 2, 1);
+        return `<div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${it.name}: saldo ${it.qtd}, mínimo ${it.min}`)}">
+          <div class="hb-name">${escapeHtml(it.name)}</div>
+          <div class="bul-track">
+            <div class="bul-bar" style="width:${(it.qtd / escala) * 100}%;${it.qtd <= it.min ? "background:var(--amber)" : ""}"></div>
+            <div class="bul-min" style="left:calc(${(it.min / escala) * 100}% - 1px)"></div>
+          </div>
+          <div class="cob-val"><b>${it.qtd}</b> / ${it.min}</div>
+        </div>`;
+      }).join("")}
+      ${comMin.length > 15 ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="bul">${geralBulTodos ? "Mostrar só os 15 primeiros" : `Ver todos os ${comMin.length} itens`}</button>` : ""}`
+      : `<div class="stats-note">Nenhum item tem estoque mínimo cadastrado ainda. Para aparecer aqui, toque no lápis de um item na Lista e preencha "Estoque mínimo". Dica: use o consumo por mês do gráfico "Mais consumidos" acima como ponto de partida.</div>`;
+
+    // 4) Histórico de saldo de um item
+    const movPorItem = {};
+    movements.forEach((m) => { (movPorItem[m.itemId] = movPorItem[m.itemId] || []).push(m); });
+    const opcoes = lista.filter((it) => movPorItem[it.id]).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    if (!geralLinhaItem || !movPorItem[geralLinhaItem]) {
+      geralLinhaItem = cob.length ? [...cob].sort((a, b) => b.porDia - a.porDia)[0].id : (opcoes[0] && opcoes[0].id);
+    }
+
+    body.innerHTML = `
+      <div class="chart-block">
+        <h3>Situação geral do estoque</h3>
+        <div class="chart-sub">${lista.length} itens cadastrados.</div>
+        ${sitHtml}
+      </div>
+      <div class="chart-block">
+        <h3>Quantos dias o estoque ainda dura</h3>
+        <div class="chart-sub">Saldo atual dividido pelo consumo médio dos últimos ${Math.round(diasBase) || 1} dia(s). Os que acabam primeiro aparecem no topo.${avisoHist}</div>
+        ${cobHtml}
+      </div>
+      <div class="chart-block">
+        <h3>Mais consumidos</h3>
+        <div class="chart-sub">Total que saiu nos últimos ${Math.round(diasBase) || 1} dia(s) e a média por mês (CMM).</div>
+        ${rankingConsumoHtml(movements.filter((m) => m.ts >= corte), diasBase, 10, "rank", geralRankTodos)}
+      </div>
+      <div class="chart-block">
+        <h3>Saldo x estoque mínimo</h3>
+        <div class="chart-sub">A barra é o saldo; o traço branco é o mínimo. Os mais perto do limite aparecem no topo.</div>
+        ${bulHtml}
+      </div>
+      <div class="chart-block">
+        <h3>Histórico do saldo</h3>
+        <div class="chart-sub">Como o saldo de um item subiu e desceu ao longo do tempo.</div>
+        <div class="linha-box">
+          ${opcoes.length ? `<select id="geralLinhaSel" aria-label="Escolher item">${opcoes.map((it) => `<option value="${it.id}" ${it.id === geralLinhaItem ? "selected" : ""}>${escapeHtml(it.name)}</option>`).join("")}</select>
+          <div id="geralLinhaSvg"></div>` : `<div class="chart-sub">Ainda não há movimentações registradas.</div>`}
+        </div>
+      </div>`;
+
+    if (opcoes.length) desenharLinha(geralLinhaItem, movPorItem[geralLinhaItem] || []);
+  }
+
+  // Linha em "degraus": o saldo fica igual até a próxima movimentação
+  function desenharLinha(id, movs) {
+    const box = el("geralLinhaSvg");
+    if (!box) return;
+    const it = items[id] || {};
+    const pts = [...movs].sort((a, b) => a.ts - b.ts).map((m) => ({ ts: m.ts, v: Number(m.qtyAfter) || 0, m }));
+    pts.push({ ts: Date.now(), v: Number(it.qty) || 0, hoje: true });
+
+    const W = Math.max(280, box.clientWidth || 600), H = 220;
+    const pad = { l: 44, r: 14, t: 14, b: 28 };
+    const t0 = pts[0].ts, t1 = Math.max(pts[pts.length - 1].ts, t0 + DIA);
+    const passo = passoRedondo(Math.max(...pts.map((p) => p.v)), 4);
+    const vMax = Math.max(passo, Math.ceil(Math.max(...pts.map((p) => p.v)) / passo) * passo);
+    const X = (ts) => pad.l + ((ts - t0) / (t1 - t0)) * (W - pad.l - pad.r);
+    const Y = (v) => pad.t + (1 - v / vMax) * (H - pad.t - pad.b);
+
+    let d = `M${X(pts[0].ts)},${Y(pts[0].v)}`;
+    for (let i = 1; i < pts.length; i++) d += ` H${X(pts[i].ts)} V${Y(pts[i].v)}`;
+
+    const ticksY = [];
+    for (let v = 0; v <= vMax; v += passo) ticksY.push(v);
+    const nX = Math.min(5, Math.max(2, Math.round((t1 - t0) / DIA) + 1));
+    const ticksX = Array.from({ length: nX }, (_, i) => t0 + ((t1 - t0) * i) / (nX - 1));
+
+    // Só as movimentações reais ganham ponto; o "hoje" apenas prolonga a linha
+    const reais = pts.filter((p) => !p.hoje);
+    box.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Histórico do saldo de ${escapeHtml(it.name || "")}">
+        ${ticksY.map((v) => `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#13202e" stroke-width="1"/>
+          <text x="${pad.l - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="#6f8aa0">${v.toLocaleString("pt-BR")}</text>`).join("")}
+        ${ticksX.map((t) => `<text x="${X(t)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#6f8aa0">${fmtDiaMes(t)}</text>`).join("")}
+        <path d="${d} V${Y(0)} H${X(pts[0].ts)} Z" fill="rgba(0,240,255,0.10)"/>
+        <path d="${d}" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        ${reais.map((p) => `<circle cx="${X(p.ts)}" cy="${Y(p.v)}" r="4" fill="#00f0ff" stroke="#03060b" stroke-width="2"/>`).join("")}
+        <line id="linhaCruz" y1="${pad.t}" y2="${H - pad.b}" stroke="#6f8aa0" stroke-width="1" visibility="hidden"/>
+        <circle id="linhaFoco" r="6" fill="#00f0ff" stroke="#03060b" stroke-width="2" visibility="hidden"/>
+        <rect x="${pad.l}" y="0" width="${W - pad.l - pad.r}" height="${H}" fill="transparent" tabindex="0" id="linhaAlvo"/>
+      </svg>`;
+
+    const svg = box.querySelector("svg");
+    const cruz = svg.querySelector("#linhaCruz"), foco = svg.querySelector("#linhaFoco");
+    const alvo = svg.querySelector("#linhaAlvo");
+    let atual = reais.length - 1;
+    const mostrar = (i) => {
+      atual = i;
+      const p = reais[i];
+      cruz.setAttribute("x1", X(p.ts)); cruz.setAttribute("x2", X(p.ts)); cruz.setAttribute("visibility", "visible");
+      foco.setAttribute("cx", X(p.ts)); foco.setAttribute("cy", Y(p.v)); foco.setAttribute("visibility", "visible");
+      const m = p.m;
+      const var_ = m.delta > 0 ? `+${m.delta}` : `${m.delta}`;
+      const origem = m.source === "enfermagem" ? `Enfermagem (${m.tipo || "Saída"})` : m.source === "import" ? "Importação Olostech" : "Manual";
+      const r = foco.getBoundingClientRect();
+      posicionarDica(`${new Date(p.ts).toLocaleDateString("pt-BR")} — saldo ${p.v} (${var_}) · ${origem}`, r);
+    };
+    const esconder = () => { cruz.setAttribute("visibility", "hidden"); foco.setAttribute("visibility", "hidden"); esconderDica(); };
+    alvo.addEventListener("pointermove", (e) => {
+      const r = svg.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width) * W;
+      let melhor = 0;
+      reais.forEach((p, i) => { if (Math.abs(X(p.ts) - x) < Math.abs(X(reais[melhor].ts) - x)) melhor = i; });
+      mostrar(melhor);
+    });
+    alvo.addEventListener("pointerleave", esconder);
+    alvo.addEventListener("focus", () => mostrar(atual));
+    alvo.addEventListener("blur", esconder);
+    alvo.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") { mostrar(Math.max(0, atual - 1)); e.preventDefault(); }
+      if (e.key === "ArrowRight") { mostrar(Math.min(reais.length - 1, atual + 1)); e.preventDefault(); }
+    });
+  }
+
+  el("geralPainelBody").addEventListener("change", (e) => {
+    if (e.target.id === "geralLinhaSel") { geralLinhaItem = e.target.value; renderGeralPainel(); }
+  });
+  el("geralPainelBody").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-vermais]");
+    if (!b) return;
+    if (b.dataset.vermais === "cob") geralCobTodos = !geralCobTodos;
+    else if (b.dataset.vermais === "rank") geralRankTodos = !geralRankTodos;
+    else geralBulTodos = !geralBulTodos;
+    renderGeralPainel();
+  });
+  document.querySelectorAll("#geralPainelFilters .chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#geralPainelFilters .chip").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      geralBase = parseInt(chip.dataset.geralbase, 10);
+      renderGeralPainel();
+    });
+  });
+  // Redesenha a linha quando a largura da tela muda (girar o celular, redimensionar)
+  let redimTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(redimTimer);
+    redimTimer = setTimeout(() => { if (currentSection === "geral" && currentView === "painel") renderGeralPainel(); }, 200);
+  });
+
+  function renderEnf() {
+    if (currentSection !== "enf") return;
+    renderEnfKpis();
+
+    const list = enfItems();
+    const filtered = enfGetFiltered();
+    const showHist = enfView === "hist";
+    const showPainel = enfView === "painel";
+    const showList = !showHist && !showPainel;
+    el("enfItemList").style.display = showList ? "" : "none";
+    el("enfHistPanel").style.display = showHist ? "block" : "none";
+    el("enfPainelPanel").style.display = showPainel ? "block" : "none";
+    el("enfFiltersRow").style.display = showList ? "flex" : "none";
+    esconderDica();
+
+    if (showPainel) {
+      el("enfEmptyState").style.display = "none";
+      renderEnfPainel();
+    } else if (showHist) {
+      el("enfEmptyState").style.display = "none";
+      renderEnfHist();
+    } else {
+      el("enfItemList").innerHTML = "";
+      el("enfEmptyState").style.display = filtered.length === 0 ? "block" : "none";
+      filtered.forEach((it) => {
+        el("enfItemList").insertAdjacentHTML("beforeend", itemRowHtml(it, true));
+      });
+    }
+  }
+
+  // ----- Janela de retirada (vários medicamentos de uma vez) -----
+  let enfCarrinho = [];        // [{ id, qtd }]
+  let enfSugIdx = -1;          // sugestão destacada pelo teclado
+  const CHAVE_RESP = "estoque.responsavel";
+
+  function lerResponsavel() { try { return localStorage.getItem(CHAVE_RESP) || ""; } catch (e) { return ""; } }
+  function guardarResponsavel(v) { try { localStorage.setItem(CHAVE_RESP, v); } catch (e) { /* sem armazenamento: só não lembra */ } }
+
+  function openEnfModal() {
+    enfCarrinho = [];
+    el("enfBusca").value = "";
+    el("enfFieldTipo").value = "Saída";
+    el("enfFieldData").value = localDateStr(new Date());
+    el("enfFieldResponsavel").value = lerResponsavel();
+    el("enfFieldObs").value = "";
+    fecharSugestoes();
+    renderCarrinho();
+    el("enfBackdrop").style.display = "flex";
+    el("enfBusca").focus();
+  }
+  function closeEnfModal() { fecharSugestoes(); el("enfBackdrop").style.display = "none"; }
+
+  // AAAA-MM-DD no fuso do navegador (toISOString usa UTC e "pula" o dia após 21h no Brasil)
+  function localDateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+
+  function sugestoesEnf() {
+    const noCarrinho = new Set(enfCarrinho.map((c) => c.id));
+    return enfItems()
+      .filter((it) => !noCarrinho.has(it.id) && combinaBusca(it, el("enfBusca").value))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }
+
+  function abrirSugestoes() {
+    const lista = sugestoesEnf();
+    const box = el("enfSugestoes");
+    enfSugIdx = lista.length ? Math.min(Math.max(enfSugIdx, 0), lista.length - 1) : -1;
+    box.innerHTML = lista.length
+      ? lista.map((it, i) => `<div class="combo-op${i === enfSugIdx ? " ativa" : ""}" role="option" id="sug-${i}" data-id="${it.id}" aria-selected="${i === enfSugIdx}">
+          <span>${escapeHtml(it.name)}</span><small>estoque ${Number(it.qty) || 0}</small></div>`).join("")
+      : `<div class="combo-vazio">Nenhum medicamento encontrado.</div>`;
+    box.hidden = false;
+    el("enfBusca").setAttribute("aria-expanded", "true");
+    if (enfSugIdx >= 0) {
+      el("enfBusca").setAttribute("aria-activedescendant", "sug-" + enfSugIdx);
+      const ativa = box.querySelector(".ativa");
+      if (ativa) ativa.scrollIntoView({ block: "nearest" });
+    }
+  }
+  function fecharSugestoes() {
+    el("enfSugestoes").hidden = true;
+    el("enfBusca").setAttribute("aria-expanded", "false");
+    el("enfBusca").removeAttribute("aria-activedescendant");
+    enfSugIdx = -1;
+  }
+
+  function adicionarAoCarrinho(id) {
+    if (!items[id] || enfCarrinho.some((c) => c.id === id)) return;
+    enfCarrinho.push({ id, qtd: 1 });
+    el("enfBusca").value = "";
+    fecharSugestoes();
+    renderCarrinho();
+    // já deixa a quantidade selecionada para digitar
+    const campo = el("enfCarrinho").querySelector(`input[data-id="${id}"]`);
+    if (campo) { campo.focus(); campo.select(); }
+  }
+
+  function renderCarrinho() {
+    const box = el("enfCarrinho");
+    const ajuste = el("enfFieldTipo").value === "Ajuste";
+    if (!enfCarrinho.length) {
+      box.innerHTML = `<div class="carrinho-vazio">Nenhum medicamento adicionado. Busque acima e toque no nome.</div>`;
+      return;
+    }
+    box.innerHTML = `<div class="carrinho-cab"><span>Medicamento</span><span>${ajuste ? "Novo saldo" : "Qtd."}</span></div>` +
+      enfCarrinho.map((c) => {
+        const it = items[c.id] || {};
+        return `<div class="carrinho-linha">
+          <div class="carrinho-nome">${escapeHtml(it.name || "")}<small>estoque atual: ${Number(it.qty) || 0} ${escapeHtml(it.unit || "un")}</small></div>
+          <input type="number" min="${ajuste ? 0 : 1}" step="1" inputmode="numeric" value="${escapeHtml(String(c.qtd))}" data-id="${c.id}" aria-label="Quantidade de ${escapeHtml(it.name || "")}" />
+          <button class="icon-btn" data-remover="${c.id}" aria-label="Remover ${escapeHtml(it.name || "")}" title="Remover">×</button>
+        </div>`;
+      }).join("");
+  }
+
+  async function saveEnfMovement() {
+    if (!enfCarrinho.length) { showToast("Adicione pelo menos um medicamento"); el("enfBusca").focus(); return; }
+    const tipo = el("enfFieldTipo").value;
+    const ajuste = tipo === "Ajuste";
+    const linhas = enfCarrinho.map((c) => ({ ...c, qtd: Math.max(0, parseInt(c.qtd, 10) || 0) }));
+    const semQtd = linhas.find((l) => (ajuste ? String(enfCarrinho.find((c) => c.id === l.id).qtd).trim() === "" : l.qtd <= 0));
+    if (semQtd) { showToast(`Informe a quantidade de ${(items[semQtd.id] || {}).name || "um item"}`); return; }
+    const responsavel = el("enfFieldResponsavel").value.trim();
+    const obs = el("enfFieldObs").value.trim();
+    const dataStr = el("enfFieldData").value;
+    // Data de hoje → hora real; data retroativa → meio-dia daquele dia
+    const ts = !dataStr || dataStr === localDateStr(new Date())
+      ? Date.now()
+      : new Date(dataStr + "T12:00:00").getTime();
+    if (!db) { showToast("Sem conexão com o banco"); return; }
+    const refs = linhas.map((l) => ({ ...l, itemRef: db.collection("estoque").doc(l.id), movRef: db.collection("movimentos").doc() }));
+    el("enfSaveBtn").disabled = true;
+    try {
+      // Transação: lê o saldo atual de todos no banco (não o da tela) e grava tudo junto.
+      // Se um item não tiver saldo suficiente, nada é gravado.
+      await db.runTransaction(async (tx) => {
+        const snaps = await Promise.all(refs.map((r) => tx.get(r.itemRef)));
+        const calc = refs.map((r, i) => {
+          const snap = snaps[i];
+          const nome = (items[r.id] || {}).name || "item";
+          if (!snap.exists) throw new Error("inexistente:" + nome);
+          const qtyBefore = Number(snap.data().qty) || 0;
+          let qtyAfter;
+          if (ajuste) qtyAfter = r.qtd;
+          else if (tipo === "Entrada" || tipo === "Devolução") qtyAfter = qtyBefore + r.qtd;
+          else {
+            qtyAfter = qtyBefore - r.qtd;
+            if (qtyAfter < 0) throw new Error(`saldo:${nome} (estoque ${qtyBefore})`);
+          }
+          return { r, nome: snap.data().name || nome, qtyBefore, qtyAfter };
+        });
+        calc.forEach(({ r, nome, qtyBefore, qtyAfter }) => {
+          tx.update(r.itemRef, { qty: qtyAfter, updatedAt: Date.now() });
+          tx.set(r.movRef, {
+            itemId: r.id, name: nome, qtyBefore, qtyAfter, delta: qtyAfter - qtyBefore,
+            ts, source: "enfermagem", tipo, responsavel: responsavel || "—", obs,
+            pendenteOlostech: !ajuste,
+          });
+        });
+      });
+      if (responsavel) guardarResponsavel(responsavel);
+      closeEnfModal();
+      showToast(linhas.length === 1 ? "Retirada registrada" : `${linhas.length} medicamentos registrados`);
+    } catch (e) {
+      const msg = String(e.message || "");
+      if (msg.startsWith("saldo:")) showToast("Quantidade maior que o estoque: " + msg.slice(6));
+      else if (msg.startsWith("inexistente:")) showToast("Medicamento não encontrado: " + msg.slice(12));
+      else showToast("Erro ao salvar");
+    } finally {
+      el("enfSaveBtn").disabled = false;
+    }
+  }
+
+  el("enfBusca").addEventListener("input", () => { enfSugIdx = 0; abrirSugestoes(); });
+  el("enfBusca").addEventListener("focus", () => abrirSugestoes());
+  el("enfBusca").addEventListener("keydown", (e) => {
+    const n = el("enfSugestoes").querySelectorAll(".combo-op").length;
+    if (e.key === "ArrowDown") { enfSugIdx = Math.min(n - 1, enfSugIdx + 1); abrirSugestoes(); e.preventDefault(); }
+    else if (e.key === "ArrowUp") { enfSugIdx = Math.max(0, enfSugIdx - 1); abrirSugestoes(); e.preventDefault(); }
+    else if (e.key === "Enter") {
+      const op = el("enfSugestoes").querySelectorAll(".combo-op")[enfSugIdx];
+      if (op) adicionarAoCarrinho(op.dataset.id);
+      e.preventDefault();
+    } else if (e.key === "Escape" && !el("enfSugestoes").hidden) { fecharSugestoes(); e.stopPropagation(); }
+  });
+  // mousedown (e não click) para escolher antes de o campo perder o foco
+  el("enfSugestoes").addEventListener("mousedown", (e) => {
+    const op = e.target.closest(".combo-op");
+    if (op) { e.preventDefault(); adicionarAoCarrinho(op.dataset.id); }
+  });
+  el("enfBusca").addEventListener("blur", () => setTimeout(fecharSugestoes, 120));
+  el("enfCarrinho").addEventListener("input", (e) => {
+    const c = enfCarrinho.find((x) => x.id === e.target.dataset.id);
+    if (c) c.qtd = e.target.value;
+  });
+  el("enfCarrinho").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-remover]");
+    if (!b) return;
+    enfCarrinho = enfCarrinho.filter((c) => c.id !== b.dataset.remover);
+    renderCarrinho();
+  });
+  el("enfFieldTipo").addEventListener("change", renderCarrinho);
+
+  function switchSection(sec) {
+    currentSection = sec;
+    el("navGeral").classList.toggle("active", sec === "geral");
+    el("navEnf").classList.toggle("active", sec === "enf");
+    el("geralSection").style.display = sec === "geral" ? "" : "none";
+    el("enfSection").style.display = sec === "enf" ? "" : "none";
+    document.body.classList.toggle("sec-enf", sec === "enf");
+    el("addFab").setAttribute("aria-label", sec === "enf" ? "Registrar retirada" : "Novo item");
+    el("addFab").title = sec === "enf" ? "Registrar retirada" : "Novo item";
+    if (sec === "enf") renderEnf();
+  }
+
+  el("navGeral").addEventListener("click", () => switchSection("geral"));
+  el("navEnf").addEventListener("click", () => switchSection("enf"));
+
+  el("enfSearchInput").addEventListener("input", (e) => { enfSearchTerm = e.target.value; renderEnf(); });
+
+  el("enfSortBtn").addEventListener("click", () => {
+    enfSortMode = PROXIMO_MODO[enfSortMode];
+    el("enfSortBtn").textContent = MODOS_ORDEM[enfSortMode];
+    renderEnf();
+  });
+
+  document.querySelectorAll("#enfFiltersRow .chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#enfFiltersRow .chip").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      enfFilter = chip.dataset.enffilter;
+      renderEnf();
+    });
+  });
+
+  document.querySelectorAll('[data-enfview]').forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll('[data-enfview]').forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      enfView = tab.dataset.enfview;
+      renderEnf();
+    });
+  });
+
+
+  document.querySelectorAll("#enfHistFilters .chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#enfHistFilters .chip").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      enfHistPeriod = parseInt(chip.dataset.enfhistperiod, 10);
+      renderEnfHist();
+    });
+  });
+
+  document.querySelectorAll("#enfPainelFilters .chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#enfPainelFilters .chip").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      enfSemanas = parseInt(chip.dataset.enfsemanas, 10);
+      esconderDica();
+      renderEnfPainel();
+    });
+  });
+
+  el("enfKpis").addEventListener("click", (e) => {
+    const k = e.target.closest(".kpi");
+    if (!k) return;
+    if (k.dataset.enfkfilter) {
+      document.querySelector('[data-enfview="list"]').click();
+      document.querySelector(`#enfFiltersRow .chip[data-enffilter="${k.dataset.enfkfilter}"]`).click();
+    } else {
+      document.querySelector(`[data-enfview="${k.dataset.enfkview}"]`).click();
+    }
+    window.scrollTo({ top: el("enfSection").offsetTop - 10, behavior: "smooth" });
+  });
+
+  el("enfItemList").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    if (btn.dataset.action === "edit") openModal(btn.dataset.id);
+  });
+
+  el("enfRegistrarBtn").addEventListener("click", openEnfModal);
+  el("enfCancelBtn").addEventListener("click", closeEnfModal);
+  el("enfSaveBtn").addEventListener("click", saveEnfMovement);
+  el("enfBackdrop").addEventListener("click", (e) => { if (e.target.id === "enfBackdrop") closeEnfModal(); });
+
+  el("enfPrintBtn").addEventListener("click", () => {
+    el("pageTitle").setAttribute("data-print-date", new Date().toLocaleDateString("pt-BR"));
+    window.print();
+  });
+
+  render();
+  init();
+
+  // Permite instalar o site como aplicativo (só funciona em https ou localhost)
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => { /* sem app instalável, o site funciona normal */ });
+    });
+  }
+})();
+</script>
+</body>
+</html>
