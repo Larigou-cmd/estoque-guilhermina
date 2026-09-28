@@ -355,6 +355,23 @@
 
   .kl-short { display: none; }
 
+  /* ----- Uso real (site + acerto do relatório) ----- */
+  :root { --mag-claro: #ffa6ee; }
+  .ur-resumo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .ur-resumo > div { padding: 10px 12px; border: 1px solid var(--line); background: #000; }
+  .ur-num { display: block; font-size: 1.5rem; font-weight: 700; color: #fff; line-height: 1.1; }
+  .ur-rot { display: block; font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+  .ur-legenda { margin: 0 0 8px; font-size: 0.82rem; }
+  .ur-bloco .cob-row { grid-template-columns: minmax(110px, 40%) 1fr auto; }
+  .ur-track { display: flex; gap: 2px; height: 14px; min-width: 4px; }
+  .ur-track > div { min-width: 2px; }
+  .ur-track > div:last-child { border-radius: 0 4px 4px 0; }
+  .ur-site { background: var(--magenta); }
+  .ur-acerto { background: var(--mag-claro); }
+  .ur-det { color: var(--text-muted); font-size: 0.78rem; }
+  .ur-bloco .cob-row:hover .ur-track, .ur-bloco .cob-row:focus-visible .ur-track { filter: drop-shadow(0 0 6px var(--magenta)); }
+  @media (max-width: 480px) { .ur-resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
   /* ----- Baixas pendentes no Olostech ----- */
   .pend-aviso {
     display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
@@ -1377,6 +1394,7 @@
   let enfView = "list";
   let enfHistPeriod = 30;
   let enfSemanas = 4;
+  let enfUsoTodos = false;   // "ver todos" no uso real
 
   function enfItems() {
     return Object.entries(items)
@@ -1495,8 +1513,56 @@
       m.source === "enfermagem" && m.delta < 0 && idxSemana.has(inicioSemana(m.ts)));
     const usos = baixas.filter(isConsumo);
 
+    // Uso real = baixas registradas no site + acerto do relatório do Olostech
+    // (saída que apareceu na importação e não tinha sido registrada no site)
+    const acertos = enfMovementsAll().filter((m) =>
+      m.source === "import" && m.delta < 0 && idxSemana.has(inicioSemana(m.ts)));
+    const porUso = {};
+    const somaUso = (m, campo) => {
+      if (!porUso[m.itemId]) porUso[m.itemId] = { nome: (items[m.itemId] && items[m.itemId].name) || m.name, site: 0, acerto: 0 };
+      porUso[m.itemId][campo] += -m.delta;
+    };
+    usos.forEach((m) => somaUso(m, "site"));
+    acertos.forEach((m) => somaUso(m, "acerto"));
+    const usoLinhas = Object.values(porUso).map((r) => ({ ...r, total: r.site + r.acerto })).sort((a, b) => b.total - a.total);
+    let blocoUsoReal = "";
+    if (usoLinhas.length) {
+      const totSite = usoLinhas.reduce((s, r) => s + r.site, 0);
+      const totAcerto = usoLinhas.reduce((s, r) => s + r.acerto, 0);
+      const totGeral = totSite + totAcerto;
+      const pctSite = totGeral ? Math.round((totSite / totGeral) * 100) : 0;
+      const maxUso = Math.max(...usoLinhas.map((r) => r.total), 1);
+      const LIM = 15;
+      const mostrar = enfUsoTodos ? usoLinhas : usoLinhas.slice(0, LIM);
+      blocoUsoReal = `
+      <div class="chart-block ur-bloco">
+        <h3>Uso real dos medicamentos</h3>
+        <div class="chart-sub">Baixas registradas no site somadas ao acerto do relatório do Olostech — o que saiu lá e não foi registrado aqui.</div>
+        <div class="ur-resumo">
+          <div><span class="ur-num">${totGeral}</span><span class="ur-rot">unidades usadas</span></div>
+          <div><span class="ur-num">${totSite}</span><span class="ur-rot">registradas no site</span></div>
+          <div><span class="ur-num">${totAcerto}</span><span class="ur-rot">vieram do acerto</span></div>
+          <div><span class="ur-num">${pctSite}%</span><span class="ur-rot">do uso foi registrado no site</span></div>
+        </div>
+        <div class="sit-legend ur-legenda">
+          <span><i style="background:var(--magenta)"></i>Baixa no site</span>
+          <span><i style="background:var(--mag-claro)"></i>Acerto do relatório</span>
+        </div>
+        ${mostrar.map((r) => `
+          <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.nome}: ${r.site} no site + ${r.acerto} de acerto = ${r.total} unidade(s)`)}">
+            <div class="hb-name">${escapeHtml(r.nome)}</div>
+            <div class="ur-track" style="width:${Math.max(2, (r.total / maxUso) * 100)}%">
+              ${r.site ? `<div class="ur-site" style="flex:${r.site}"></div>` : ""}
+              ${r.acerto ? `<div class="ur-acerto" style="flex:${r.acerto}"></div>` : ""}
+            </div>
+            <div class="cob-val"><b>${r.total}</b>${r.acerto ? ` <span class="ur-det">(${r.site}+${r.acerto})</span>` : ""}</div>
+          </div>`).join("")}
+        ${usoLinhas.length > LIM ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="usoreal">${enfUsoTodos ? `Mostrar só os ${LIM} primeiros` : `Ver todos os ${usoLinhas.length} medicamentos`}</button>` : ""}
+      </div>`;
+    }
+
     if (!baixas.length) {
-      body.innerHTML = `<div class="hist-empty">Ainda não há baixas da Enfermagem nas últimas ${enfSemanas} semanas.<br>Os gráficos aparecem conforme as baixas forem lançadas no botão "Registrar".</div>`;
+      body.innerHTML = blocoUsoReal + `<div class="hist-empty">Ainda não há baixas da Enfermagem nas últimas ${enfSemanas} semanas.<br>Os gráficos aparecem conforme as baixas forem lançadas no botão "Registrar".</div>`;
       return;
     }
 
@@ -1568,7 +1634,7 @@
       resp = [...resp.slice(0, 7), { nome: "Outros", valor: resto }];
     }
 
-    body.innerHTML = `
+    body.innerHTML = `${blocoUsoReal}
       <div class="chart-block">
         <h3>Uso total por semana</h3>
         <div class="chart-sub">Unidades usadas pela Enfermagem, somando todos os medicamentos.</div>
@@ -2095,6 +2161,10 @@
       enfHistPeriod = parseInt(chip.dataset.enfhistperiod, 10);
       renderEnfHist();
     });
+  });
+
+  el("enfPainelBody").addEventListener("click", (e) => {
+    if (e.target.closest('[data-vermais="usoreal"]')) { enfUsoTodos = !enfUsoTodos; renderEnfPainel(); }
   });
 
   document.querySelectorAll("#enfPainelFilters .chip").forEach((chip) => {
