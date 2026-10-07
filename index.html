@@ -395,6 +395,23 @@
   .olo-ok { color: var(--text-muted); }
   .pend-tabela td:nth-child(3) { white-space: normal; min-width: 110px; }
   .pend-tabela th, .pend-tabela td { padding-left: 6px; padding-right: 6px; }
+  .pdf-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+  .pdf-pick label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 11px 16px; border-radius: 10px; font-weight: 600; }
+  .pdf-pick label:focus-within, .pdf-pick label:hover { filter: brightness(1.1); }
+  .pdf-status { font-size: 0.84rem; color: var(--text-muted); }
+  .pdf-status b { color: var(--text); }
+  .colar-texto { margin-bottom: 10px; font-size: 0.84rem; }
+  .colar-texto summary { cursor: pointer; color: var(--text-muted); margin-bottom: 8px; }
+  .import-resumo { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; color: var(--text); }
+  .import-ok { margin-top: 8px; padding: 8px 10px; color: var(--lime); border: 1px solid rgba(182,255,59,0.4); background: rgba(182,255,59,0.06); }
+  .import-erro { margin-top: 8px; padding: 8px 10px; color: var(--red); border: 1px solid rgba(255,42,85,0.5); background: rgba(255,42,85,0.08); }
+  .badge-chegou { color: var(--lime); background: rgba(182,255,59,0.08); }
+  .chegou-dia { margin-bottom: 14px; }
+  .chegou-dia h4 { margin: 0 0 6px; font-size: 0.9rem; font-weight: 600; color: var(--lime); }
+  .chegou-dia h4 span { color: var(--text-muted); font-weight: 400; }
+  .chegou-lista { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 12px; font-size: 0.86rem; }
+  .chegou-lista .q { color: var(--lime); font-weight: 700; text-align: right; }
+  .chegou-lista .s { color: var(--text-muted); text-align: right; }
   .import-aviso { margin-top: 8px; padding: 8px 10px; color: var(--amber); border: 1px solid rgba(255,176,0,0.45); background: rgba(255,176,0,0.07); }
 
   /* ----- Janela de retirada: busca + lista ----- */
@@ -634,12 +651,20 @@
   <div class="modal">
     <h2>Importar relatório do Olostech</h2>
     <p style="font-size:0.82rem;color:var(--text-muted);margin:-6px 0 12px;">
-      Cole abaixo o texto da "Relação de Saldo de Materiais" (pode copiar direto do PDF ou da tela).
-      Itens com o mesmo código são atualizados; itens novos são criados.
+      Escolha os PDFs da "Relação de Saldo de Materiais" — o <b>com saldo</b> e o <b>sem saldo</b>, os dois juntos.
+      O site confere a soma com o total do relatório antes de importar.
     </p>
-    <div class="field">
-      <textarea id="importText" rows="10" placeholder="33938 ESCOPOLAMINA N-BUTIL BROMETO 10 MG comp Ativo 17/09/2026 300 159,00&#10;37156 ACETATO DE MEDROXIPROGESTERONA 150MG/ML amp Ativo 16/09/2026 46 180,32&#10;..."></textarea>
+    <div class="pdf-pick">
+      <label class="btn-primary" for="importPdf"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/></svg>Escolher PDF do Olostech</label>
+      <input type="file" id="importPdf" accept="application/pdf,.pdf" multiple hidden />
+      <div id="importPdfStatus" class="pdf-status" aria-live="polite"></div>
     </div>
+    <details class="colar-texto" id="importColar">
+      <summary>Ou colar o texto do relatório</summary>
+      <div class="field">
+        <textarea id="importText" rows="8" placeholder="33938 ESCOPOLAMINA N-BUTIL BROMETO 10 MG comp Ativo 17/09/2026 300 159,00&#10;37156 ACETATO DE MEDROXIPROGESTERONA 150MG/ML amp Ativo 16/09/2026 46 180,32&#10;..."></textarea>
+      </div>
+    </details>
     <div id="importPreview" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:6px;"></div>
     <div class="modal-actions">
       <button class="btn-ghost" id="importCancelBtn">Cancelar</button>
@@ -756,10 +781,13 @@
     // Só os problemas ganham selo — "OK" é o normal e não precisa de cor
     const selo = st === "zero" ? '<span class="badge badge-zero">Zerado</span>'
       : st === "low" ? '<span class="badge badge-low">Baixo</span>' : "";
+    const chegou = ultimaEntrada[it.id];
+    const seloChegou = chegou && chegou.ts >= Date.now() - DIAS_SELO_CHEGOU * 86400000
+      ? `<span class="badge badge-chegou" title="Chegaram ${chegou.delta} em ${new Date(chegou.ts).toLocaleDateString("pt-BR")}">Chegou ${fmtDiaMes(chegou.ts)}</span>` : "";
     return `
       <div class="item" data-item-row="${it.id}">
         <div class="item-main">
-          <div class="item-name">${escapeHtml(it.name)}${selo}${it.enfermagem && !dentroEnf ? '<span class="badge badge-enf">Uso exclusivo Enfermagem</span>' : ""}</div>
+          <div class="item-name">${escapeHtml(it.name)}${selo}${seloChegou}${it.enfermagem && !dentroEnf ? '<span class="badge badge-enf">Uso exclusivo Enfermagem</span>' : ""}</div>
           <div class="item-meta">${escapeHtml(it.unit || "un")}${it.code ? " · cód. " + escapeHtml(it.code) : ""}${it.min ? " · mín. " + escapeHtml(String(it.min)) : ""}${it.notes ? " · " + escapeHtml(it.notes) : ""}${Number.isFinite(it._dias) && it._dias >= 0 ? ` · <span class="dura">dura ≈ ${it._dias < 1 ? "menos de 1 dia" : Math.round(it._dias) + " dia" + (Math.round(it._dias) === 1 ? "" : "s")}</span>` : ""}</div>
         </div>
         <div class="qty-value qty-${st}">${Number(it.qty) || 0}</div>
@@ -870,7 +898,7 @@
     });
   }
 
-  async function logMovement(itemId, name, qtyBefore, qtyAfter, source) {
+  async function logMovement(itemId, name, qtyBefore, qtyAfter, source, extra) {
     if (!db || qtyBefore === qtyAfter) return;
     try {
       await db.collection("movimentos").add({
@@ -879,8 +907,21 @@
         delta: qtyAfter - qtyBefore,
         ts: Date.now(),
         source,
+        ...(extra || {}),
       });
     } catch (e) { /* estatística é auxiliar — não bloqueia o fluxo principal */ }
+  }
+
+  // Entrada = mercadoria que chegou: importação do relatório em que o saldo de um item
+  // que já existia subiu. (A carga inicial de 17/09 não conta como entrega.)
+  function isEntrada(m) { return m.entrada === true; }
+  const DIAS_SELO_CHEGOU = 7;
+  let ultimaEntrada = {};   // itemId -> movimento da chegada mais recente
+  function recalcularEntradas() {
+    ultimaEntrada = {};
+    movements.forEach((m) => {
+      if (isEntrada(m) && (!ultimaEntrada[m.itemId] || m.ts > ultimaEntrada[m.itemId].ts)) ultimaEntrada[m.itemId] = m;
+    });
   }
 
   // Saída que conta como consumo para o CMM: Perda, Vencimento e Ajuste não são uso.
@@ -1111,10 +1152,26 @@
     return docId;
   }
 
+  // Conferências do relatório antes de importar: total, itens faltando, data
+  function conferirRelatorio(texto, parsed) {
+    const totais = [...texto.matchAll(/Total saldo:\s*([\d.]+)/g)].map((m) => parseInt(m[1].replace(/\./g, ""), 10) || 0);
+    const somaLida = parsed.reduce((a, it) => a + it.qty, 0);
+    const somaTotais = totais.reduce((a, n) => a + n, 0);
+    const impressoes = [...texto.matchAll(/Impress[ãa]o em:\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/g)]
+      .map((m) => new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]).getTime());
+    const lidos = new Set(parsed.map((it) => it.code));
+    const faltando = Object.entries(items)
+      .filter(([, d]) => d.code && Number(d.qty) > 0 && !lidos.has(d.code))
+      .map(([, d]) => d.name);
+    return { temTotal: totais.length > 0, somaLida, somaTotais, bate: somaLida === somaTotais, impresso: impressoes.length ? Math.min(...impressoes) : 0, faltando };
+  }
+
   function updateImportPreview() {
-    const { items: parsed, format } = parseOlostechReport(el("importText").value);
+    const texto = el("importText").value;
+    const { items: parsed, format } = parseOlostechReport(texto);
+    el("importConfirmBtn").disabled = !parsed.length;
     if (!parsed.length) {
-      el("importPreview").textContent = "Nenhum item reconhecido ainda — cole o texto do relatório.";
+      el("importPreview").textContent = texto.trim() ? "Nenhum item reconhecido nesse texto." : "";
       return;
     }
     const label = format === "coded" ? "com código Olostech" : "consulta pública (sem código, relacionado pelo nome)";
@@ -1126,15 +1183,84 @@
       ? `<div class="import-aviso">Baixas da Enfermagem ainda não lançadas no Olostech serão descontadas do saldo do relatório em ${descontos.length} item(ns): ${descontos.join(", ")}.
          Se você já lançou alguma delas no Olostech, marque como lançada antes de importar.</div>`
       : "";
-    el("importPreview").innerHTML = `${parsed.length} item(ns) reconhecido(s) — formato: ${label}.${aviso}`;
+    // o que vai mudar
+    let sobem = 0, descem = 0;
+    [...new Map(parsed.map((it) => [docIdDoRelatorio(it), it])).entries()].forEach(([id, it]) => {
+      if (!items[id]) return;
+      const antes = Number(items[id].qty) || 0, depois = Math.max(0, it.qty + (pend[id] || 0));
+      if (depois > antes) sobem++; else if (depois < antes) descem++;
+    });
+    const c = format === "coded" ? conferirRelatorio(texto, parsed) : null;
+    const avisos = [];
+    if (c && c.temTotal) {
+      avisos.push(c.bate
+        ? `<div class="import-ok">Conferido: a soma dos saldos (${c.somaLida.toLocaleString("pt-BR")}) bate com o total do relatório.</div>`
+        : `<div class="import-erro">A soma lida (${c.somaLida.toLocaleString("pt-BR")}) não bate com o total do relatório (${c.somaTotais.toLocaleString("pt-BR")}). Algum item não foi lido — não importe e confira o PDF.</div>`);
+    }
+    if (c && c.faltando.length) {
+      avisos.push(`<div class="import-aviso">${c.faltando.length} item(ns) com saldo no site não estão neste relatório (ex.: ${c.faltando.slice(0, 3).map(escapeHtml).join(", ")}). Se eles zeraram, escolha também o PDF <b>sem saldo</b> — senão continuam com o saldo antigo.</div>`);
+    }
+    const ultimaImport = Math.max(0, ...movements.filter((m) => m.source === "import").map((m) => m.ts));
+    if (c && c.impresso && c.impresso < ultimaImport && (sobem || descem)) {
+      avisos.push(`<div class="import-aviso">Este relatório é de ${new Date(c.impresso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}, mais antigo que a última importação (${new Date(ultimaImport).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}). Importar um relatório velho volta os saldos para trás.</div>`);
+    }
+    if (c && c.temTotal && !c.bate) el("importConfirmBtn").disabled = true;
+    el("importPreview").innerHTML = `${parsed.length} item(ns) reconhecido(s) — formato: ${label}${c && c.impresso ? ` · relatório de ${new Date(c.impresso).toLocaleDateString("pt-BR")}` : ""}.
+      <div class="import-resumo"><span>Saldo diminui: <b>${descem}</b></span><span>Chegou (saldo sobe): <b>${sobem}</b></span><span>Sem mudança: <b>${parsed.length - sobem - descem}</b></span></div>
+      ${avisos.join("")}${aviso}`;
+  }
+
+  // ----- Ler o PDF do Olostech direto no site (pdf.js, carregado só quando precisa) -----
+  const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+  let pdfjsPromessa = null;
+  function carregarPdfJs() {
+    if (!pdfjsPromessa) {
+      pdfjsPromessa = new Promise((ok, erro) => {
+        const sc = document.createElement("script");
+        sc.src = PDFJS + "pdf.min.js";
+        sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; ok(window.pdfjsLib); };
+        sc.onerror = () => { pdfjsPromessa = null; erro(new Error("sem internet")); };
+        document.head.appendChild(sc);
+      });
+    }
+    return pdfjsPromessa;
+  }
+  // Texto do PDF na mesma forma de "copiar e colar": cada linha visual vira uma linha
+  async function textoDoPdf(arquivo) {
+    const lib = await carregarPdfJs();
+    const doc = await lib.getDocument({ data: await arquivo.arrayBuffer() }).promise;
+    let texto = "";
+    for (let p = 1; p <= doc.numPages; p++) {
+      const conteudo = await (await doc.getPage(p)).getTextContent();
+      texto += conteudo.items.map((i) => i.str + (i.hasEOL ? "\n" : "")).join("") + "\n";
+    }
+    return texto;
+  }
+  async function lerPdfsEscolhidos(arquivos) {
+    const lista = [...arquivos];
+    if (!lista.length) return;
+    const status = el("importPdfStatus");
+    status.textContent = `Lendo ${lista.length} PDF${lista.length > 1 ? "s" : ""}…`;
+    el("importConfirmBtn").disabled = true;
+    try {
+      const textos = await Promise.all(lista.map(textoDoPdf));
+      el("importText").value = textos.join("\n");
+      status.innerHTML = `Lido${lista.length > 1 ? "s" : ""}: ${lista.map((a) => `<b>${escapeHtml(a.name)}</b>`).join(", ")}`;
+    } catch (e) {
+      status.textContent = e.message === "sem internet"
+        ? "Não consegui abrir o leitor de PDF — confira a internet e tente de novo."
+        : "Não consegui ler esse arquivo. Confira se é o PDF da Relação de Saldo de Materiais.";
+    }
+    updateImportPreview();
   }
 
   async function confirmImport() {
     const { items: parsed } = parseOlostechReport(el("importText").value);
     if (!parsed.length) { showToast("Nenhum item reconhecido"); return; }
     if (!db) { showToast("Sem conexão com o banco"); return; }
-    let ok = 0, fail = 0, descontados = 0;
+    let ok = 0, fail = 0, descontados = 0, entradas = 0;
     const pend = pendentePorItem();
+    el("importConfirmBtn").disabled = true;
     const usedIds = new Set();
     for (const it of parsed) {
       try {
@@ -1155,12 +1281,16 @@
           ...(dataBRparaTs(it.ultMov) ? { ultMovOlostech: dataBRparaTs(it.ultMov) } : {}),
           updatedAt: Date.now(),
         }, { merge: true });
-        logMovement(docId, it.name || prev.name, qtyBefore, qtyFinal, "import");
+        // saldo de um item que já existia subiu = mercadoria que chegou
+        const entrada = items[docId] && qtyFinal > qtyBefore;
+        if (entrada) entradas++;
+        logMovement(docId, it.name || prev.name, qtyBefore, qtyFinal, "import", entrada ? { entrada: true } : null);
         ok++;
       } catch (e) { fail++; }
     }
+    el("importConfirmBtn").disabled = false;
     closeImportModal();
-    showToast(`Importado: ${ok}${descontados ? " · " + descontados + " com baixa pendente da Enfermagem" : ""}${fail ? " · falhas: " + fail : ""}`);
+    showToast(`Importado: ${ok}${entradas ? " · " + entradas + " com entrada" : ""}${descontados ? " · " + descontados + " com baixa pendente da Enfermagem" : ""}${fail ? " · falhas: " + fail : ""}`);
   }
 
   // ----- Baixas para lançar no Olostech -----
@@ -1235,6 +1365,10 @@
   function openImportModal() {
     el("importText").value = "";
     el("importPreview").textContent = "";
+    el("importPdf").value = "";
+    el("importPdfStatus").textContent = "";
+    el("importColar").open = false;
+    el("importConfirmBtn").disabled = true;
     el("importBackdrop").style.display = "flex";
   }
   function closeImportModal() {
@@ -1267,6 +1401,7 @@
   el("importCancelBtn").addEventListener("click", closeImportModal);
   el("importConfirmBtn").addEventListener("click", confirmImport);
   el("importText").addEventListener("input", updateImportPreview);
+  el("importPdf").addEventListener("change", (e) => lerPdfsEscolhidos(e.target.files));
   el("importBackdrop").addEventListener("click", (e) => {
     if (e.target.id === "importBackdrop") closeImportModal();
   });
@@ -1371,8 +1506,8 @@
     movCol.onSnapshot(
       (snap) => {
         movements = snap.docs.map((d) => d.data());
-        renderKpis();
-        if (currentView === "painel" && currentSection === "geral") renderGeralPainel();
+        recalcularEntradas();
+        render();
         renderEnf();
       },
       () => { /* estatística é auxiliar — falha aqui não impede o uso do estoque */ }
@@ -1707,6 +1842,7 @@
   let geralPedirTodos = false;
   let geralZeroTodos = false;
   let geralParadoTodos = false;
+  let geralChegouTodos = false;
   let geralTextoPedido = "";
 
   function passoRedondo(max, partes) {
@@ -1903,6 +2039,26 @@
 
     geralTextoPedido = textoPedido;
 
+    // 8) O que chegou: entradas agrupadas por dia, a mais recente primeiro
+    const porDiaChegada = {};
+    movements.filter(isEntrada).forEach((m) => {
+      const d = new Date(m.ts); const k = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      (porDiaChegada[k] = porDiaChegada[k] || []).push(m);
+    });
+    const dias = Object.keys(porDiaChegada).map(Number).sort((a, b) => b - a);
+    const diasMostrar = geralChegouTodos ? dias : dias.slice(0, 2);
+    const chegouHtml = dias.length ? `
+      ${diasMostrar.map((k) => {
+        const nomeDe = (m) => (items[m.itemId] ? items[m.itemId].name : m.name);
+        const ms = porDiaChegada[k].sort((a, b) => nomeDe(a).localeCompare(nomeDe(b), "pt-BR"));
+        return `<div class="chegou-dia">
+          <h4>${new Date(k).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })} <span>· ${ms.length} ${ms.length === 1 ? "item" : "itens"}</span></h4>
+          <div class="chegou-lista">${ms.map((m) => `<span>${escapeHtml(nomeDe(m))}</span><span class="q">+${Number(m.delta).toLocaleString("pt-BR")}</span><span class="s">ficou ${Number(m.qtyAfter).toLocaleString("pt-BR")}</span>`).join("")}</div>
+        </div>`;
+      }).join("")}
+      ${dias.length > 2 ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="chegou">${geralChegouTodos ? "Mostrar só as 2 últimas" : `Ver todas as ${dias.length} entregas`}</button>` : ""}`
+      : `<div class="chart-sub">Nenhuma entrada nos últimos 90 dias.</div>`;
+
     // 4) Histórico de saldo de um item
     const movPorItem = {};
     movements.forEach((m) => { (movPorItem[m.itemId] = movPorItem[m.itemId] || []).push(m); });
@@ -1928,6 +2084,11 @@
         ${pedirHtml}
       </div>
       <div class="chart-block">
+        <h3>O que chegou</h3>
+        <div class="chart-sub">Entregas que entraram no estoque (o saldo subiu no relatório do Olostech). "Ficou" é o saldo logo depois da entrada.</div>
+        ${chegouHtml}
+      </div>
+      <div class="chart-block">
         <h3>Mais consumidos</h3>
         <div class="chart-sub">Total que saiu nos últimos ${Math.round(diasBase) || 1} dia(s) e a média por mês (CMM).</div>
         ${rankingConsumoHtml(movements.filter((m) => m.ts >= corte), diasBase, 10, "rank", geralRankTodos)}
@@ -1949,7 +2110,7 @@
       </div>
       <div class="chart-block">
         <h3>Histórico do saldo</h3>
-        <div class="chart-sub">Como o saldo de um item subiu e desceu ao longo do tempo.</div>
+        <div class="chart-sub">Como o saldo de um item subiu e desceu ao longo do tempo. Os pontos verdes são entradas (mercadoria que chegou).</div>
         <div class="linha-box">
           ${opcoes.length ? `<select id="geralLinhaSel" aria-label="Escolher item">${opcoes.map((it) => `<option value="${it.id}" ${it.id === geralLinhaItem ? "selected" : ""}>${escapeHtml(it.name)}</option>`).join("")}</select>
           <div id="geralLinhaSvg"></div>` : `<div class="chart-sub">Ainda não há movimentações registradas.</div>`}
@@ -1992,7 +2153,7 @@
         ${ticksX.map((t) => `<text x="${X(t)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#6f8aa0">${fmtDiaMes(t)}</text>`).join("")}
         <path d="${d} V${Y(0)} H${X(pts[0].ts)} Z" fill="rgba(0,240,255,0.10)"/>
         <path d="${d}" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-        ${reais.map((p) => `<circle cx="${X(p.ts)}" cy="${Y(p.v)}" r="4" fill="#00f0ff" stroke="#03060b" stroke-width="2"/>`).join("")}
+        ${reais.map((p) => `<circle cx="${X(p.ts)}" cy="${Y(p.v)}" r="${isEntrada(p.m) ? 5 : 4}" fill="${isEntrada(p.m) ? "#b6ff3b" : "#00f0ff"}" stroke="#03060b" stroke-width="2"/>`).join("")}
         <line id="linhaCruz" y1="${pad.t}" y2="${H - pad.b}" stroke="#6f8aa0" stroke-width="1" visibility="hidden"/>
         <circle id="linhaFoco" r="6" fill="#00f0ff" stroke="#03060b" stroke-width="2" visibility="hidden"/>
         <rect x="${pad.l}" y="0" width="${W - pad.l - pad.r}" height="${H}" fill="transparent" tabindex="0" id="linhaAlvo"/>
@@ -2009,7 +2170,7 @@
       foco.setAttribute("cx", X(p.ts)); foco.setAttribute("cy", Y(p.v)); foco.setAttribute("visibility", "visible");
       const m = p.m;
       const var_ = m.delta > 0 ? `+${m.delta}` : `${m.delta}`;
-      const origem = m.source === "enfermagem" ? `Enfermagem (${m.tipo || "Saída"})` : m.source === "import" ? "Importação Olostech" : "Manual";
+      const origem = m.source === "enfermagem" ? `Enfermagem (${m.tipo || "Saída"})` : isEntrada(m) ? "Entrada (chegou mercadoria)" : m.source === "import" ? "Relatório Olostech" : "Manual";
       const r = foco.getBoundingClientRect();
       posicionarDica(`${new Date(p.ts).toLocaleDateString("pt-BR")} — saldo ${p.v} (${var_}) · ${origem}`, r);
     };
@@ -2045,6 +2206,7 @@
     else if (qual === "pedir") geralPedirTodos = !geralPedirTodos;
     else if (qual === "zero") geralZeroTodos = !geralZeroTodos;
     else if (qual === "parado") geralParadoTodos = !geralParadoTodos;
+    else if (qual === "chegou") geralChegouTodos = !geralChegouTodos;
     else geralBulTodos = !geralBulTodos;
     renderGeralPainel();
   });
