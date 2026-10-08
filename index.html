@@ -125,6 +125,19 @@
   .dash-entradas .vb-col:hover .vb-bar, .dash-entradas .vb-col:focus-visible .vb-bar { box-shadow: 0 0 12px var(--lime); }
   .abc-lista { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 0.82rem; }
   .abc-item b { color: var(--text-muted); font-weight: 400; }
+  .kpi-comp { margin-top: 4px; font-size: 0.78rem; color: var(--text-muted); }
+  .kpi-comp b { color: var(--text); }
+  .fora-lista { display: flex; flex-direction: column; gap: 8px; }
+  .fora-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid rgba(255,176,0,0.35); background: rgba(255,176,0,0.05); outline: none; }
+  .fora-item:focus-visible, .fora-item:hover { border-color: var(--amber); }
+  .fora-item small { display: block; margin-top: 2px; font-size: 0.8rem; color: var(--text-muted); }
+  .fora-item small b { color: var(--text); }
+  .fora-icone { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--amber); color: #1a1000; font-weight: 800; font-size: 0.8rem; display: grid; place-items: center; }
+  #dashBody .hb-bar.falta { background: var(--red); }
+  #dashBody .hb-bar.enf { background: var(--magenta); }
+  .dash-enf .ur-num { color: var(--magenta); }
+  .ur-resumo.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dash-sub { margin: 16px 0 6px; font-size: 0.92rem; font-weight: 600; color: var(--text); }
   .dash-tabela summary { cursor: pointer; color: var(--cyan); margin-bottom: 8px; }
 
   /* ----- Painéis ----- */
@@ -962,6 +975,33 @@
     });
   }
 
+  // Dias que cada item ficou com saldo 0 entre "iniJanela" e "agora", pelo histórico.
+  // Antes da primeira importação de um item o saldo é desconhecido e não conta.
+  function calcDiasZerado(lista, iniJanela, agora) {
+    const movsDoItem = {};
+    movements.forEach((m) => { (movsDoItem[m.itemId] = movsDoItem[m.itemId] || []).push(m); });
+    Object.values(movsDoItem).forEach((ms) => ms.sort((a, b) => a.ts - b.ts));
+    return lista.map((it) => {
+      const ms = movsDoItem[it.id] || [];
+      let cursor = iniJanela, q, i = 0;
+      const antes = ms.filter((m) => m.ts <= iniJanela);
+      if (antes.length) { q = Number(antes[antes.length - 1].qtyAfter) || 0; i = antes.length; }
+      else if (ms.length) {
+        const p = ms[0];
+        if (p.source === "import" && Number(p.qtyBefore) === 0) { cursor = Math.max(p.ts, iniJanela); q = Number(p.qtyAfter) || 0; i = 1; }
+        else q = Number(p.qtyBefore) || 0;
+      } else q = it.qtd;
+      let zeroMs = 0;
+      for (; i < ms.length; i++) {
+        if (q === 0) zeroMs += ms[i].ts - cursor;
+        cursor = ms[i].ts;
+        q = Number(ms[i].qtyAfter) || 0;
+      }
+      if (q === 0) zeroMs += agora - cursor;
+      return { ...it, diasZero: zeroMs / DIA };
+    }).filter((r) => r.diasZero >= 0.5).sort((a, b) => b.diasZero - a.diasZero);
+  }
+
   // Saída que conta como consumo para o CMM: Perda, Vencimento e Ajuste não são uso.
   function isConsumo(m) {
     return m.delta < 0 && (!m.tipo || m.tipo === "Saída");
@@ -1558,6 +1598,7 @@
       (snap) => {
         pendentesOlostech = snap.docs.map((d) => ({ _id: d.id, ...d.data() }));
         renderPendAviso();
+        if (currentSection === "dash") renderDash();
       },
       () => { /* sem a lista de pendentes, a importação não desconta nada — o resto funciona */ }
     );
@@ -1878,6 +1919,11 @@
   let dashDias = 30;        // período mostrado
   let dashMedida = "un";    // "un" = unidades, "rs" = valor em R$
   let dashTopTodos = false;
+  let dashForaTodos = false;
+  let dashFaltaTodos = false;
+  // Saída "fora do normal": de uma vez, pelo menos 10× o esperado para o intervalo
+  // e pelo menos metade do saldo que havia (ajustado nos dados reais de set–out/2026)
+  const FORA_FATOR = 10, FORA_FRACAO = 0.5, FORA_MINIMO = 10;
   let dashLinhasCsv = [];
   const fmtRS = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: v >= 1000 ? 0 : 2 });
   const fmtN = (v) => Math.round(v).toLocaleString("pt-BR");
@@ -1946,6 +1992,51 @@
     ${semanas.some((s) => s.parcial) ? `<div class="vb-nota">* semana atual, ainda em andamento (barra listrada)</div>` : ""}`;
   }
 
+  // Total que saiu (R$, unidades) num intervalo de tempo
+  function somaSaidas(ini, fim) {
+    let rs = 0, un = 0;
+    movements.forEach((m) => {
+      if (m.ts < ini || m.ts >= fim || !isConsumo(m)) return;
+      un += -m.delta; rs += -m.delta * precoDe(m.itemId);
+    });
+    return { rs, un };
+  }
+  // "↑ 12% vs 7 dias antes" — só quando o período anterior inteiro está no histórico
+  function comparacaoHtml(atual, anterior, temHistorico) {
+    if (!temHistorico) return `<div class="kpi-comp">comparação: falta histórico do período anterior</div>`;
+    if (anterior <= 0) return `<div class="kpi-comp">nada no período anterior</div>`;
+    const pct = Math.round(((atual - anterior) / anterior) * 100);
+    const seta = pct > 0 ? "↑" : pct < 0 ? "↓" : "=";
+    return `<div class="kpi-comp"><b>${seta} ${Math.abs(pct)}%</b> vs ${dashDias} dias antes</div>`;
+  }
+
+  function saidasForaDoNormal(corte, agora) {
+    const primeiro = movements.length ? Math.min(...movements.map((m) => m.ts)) : agora;
+    const diasHist = Math.max(1, (agora - primeiro) / DIA);
+    const porItem = {};
+    movements.forEach((m) => { (porItem[m.itemId] = porItem[m.itemId] || []).push(m); });
+    const achados = [];
+    Object.values(porItem).forEach((ms) => {
+      ms.sort((a, b) => a.ts - b.ts);
+      const total = ms.filter(isConsumo).reduce((a, m) => a - m.delta, 0);
+      ms.forEach((m, i) => {
+        if (m.ts < corte || !isConsumo(m)) return;
+        const q = -m.delta;
+        // ritmo normal = as outras saídas do item; intervalo = desde o movimento anterior
+        const intervalo = Math.max(1, (m.ts - (i > 0 ? ms[i - 1].ts : primeiro)) / DIA);
+        const esperado = ((total - q) / diasHist) * intervalo;
+        if (q >= FORA_MINIMO && q >= FORA_FATOR * esperado && q >= FORA_FRACAO * (Number(m.qtyBefore) || 0)) {
+          achados.push({ m, q, esperado, intervalo });
+        }
+      });
+    });
+    return achados.sort((a, b) => b.m.ts - a.m.ts);
+  }
+
+  // Nome do responsável sem diferença de maiúsculas/acentos ("FABIO" = "Fabio")
+  function chaveNome(n) { return semAcento(String(n || "").trim()).replace(/\s+/g, " "); }
+  function nomeBonito(n) { return String(n || "").trim().toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase()); }
+
   function renderDash() {
     const body = el("dashBody");
     if (!body) return;
@@ -1994,6 +2085,80 @@
       <div class="abc-lista"><span class="chart-sub" style="margin:0">Classe A:</span> ${classes[0].itens.slice(0, 10).map((r) => `<span class="abc-item">${escapeHtml(r.nome)} <b>${fmtRS(r.rs)}</b></span>`).join("")}${classes[0].n > 10 ? `<span class="abc-item">+ ${classes[0].n - 10} na tabela abaixo</span>` : ""}</div>`
       : `<div class="chart-sub">Ainda sem preços — importe um relatório do Olostech para os valores aparecerem.</div>`;
 
+    // comparação com o período anterior (mesmo tamanho, logo antes)
+    const primeiroMov = movements.length ? Math.min(...movements.map((m) => m.ts)) : d.agora;
+    const iniAtual = d.agora - dashDias * DIA, iniAnterior = iniAtual - dashDias * DIA;
+    const temAnterior = primeiroMov <= iniAnterior + DIA;
+    const saiuAnterior = somaSaidas(iniAnterior, iniAtual);
+    const chegouAnterior = movements.filter((m) => isEntrada(m) && m.ts >= iniAnterior && m.ts < iniAtual).reduce((a, m) => a + m.delta * precoDe(m.itemId), 0);
+
+    // saídas fora do normal
+    const fora = saidasForaDoNormal(d.corte, d.agora);
+    const foraMostrar = dashForaTodos ? fora : fora.slice(0, 8);
+    const origemDe = (m) => (m.source === "enfermagem" ? `baixa da Enfermagem${m.responsavel ? " (" + escapeHtml(nomeBonito(m.responsavel)) + ")" : ""}` : "relatório do Olostech");
+    const foraHtml = fora.length ? `
+      <div class="fora-lista">${foraMostrar.map((f) => `
+        <div class="fora-item" tabindex="0" data-tip="${escapeHtml(`${(items[f.m.itemId] || {}).name || f.m.name}: saíram ${fmtN(f.q)} de uma vez; pelo ritmo normal, seriam ≈ ${fmtN(f.esperado)} em ${Math.round(f.intervalo)} dia(s)`)}">
+          <span class="fora-icone" aria-hidden="true">!</span>
+          <div><b>${escapeHtml((items[f.m.itemId] || {}).name || f.m.name)}</b>
+            <small>${new Date(f.m.ts).toLocaleDateString("pt-BR")} · saíram <b>${fmtN(f.q)}</b> de ${fmtN(Number(f.m.qtyBefore) || 0)} de uma vez · ${f.esperado < 1 ? "normalmente quase não sai" : `normal ≈ ${fmtN(f.esperado)} em ${Math.round(f.intervalo)} dia${Math.round(f.intervalo) === 1 ? "" : "s"}`} · ${origemDe(f.m)}</small></div>
+        </div>`).join("")}</div>
+      ${fora.length > 8 ? `<button class="btn-ghost btn-sm ver-mais" data-dashfora="1">${dashForaTodos ? "Mostrar só as 8 mais recentes" : `Ver todas as ${fora.length}`}</button>` : ""}`
+      : `<div class="chart-sub">Nenhuma saída fora do normal nesse período.</div>`;
+
+    // faltas (itens que ficaram zerados)
+    const faltas = calcDiasZerado(lista, d.corte, d.agora);
+    const diasFalta = faltas.reduce((a, r) => a + r.diasZero, 0);
+    const faltaMostrar = dashFaltaTodos ? faltas : faltas.slice(0, 10);
+    const maxFalta = Math.max(...faltas.map((r) => r.diasZero), 1);
+    const faltaHtml = faltas.length ? `
+      <div class="ur-resumo tres">
+        <div><span class="ur-num">${faltas.length}</span><span class="ur-rot">itens ficaram em falta</span></div>
+        <div><span class="ur-num">${fmtN(diasFalta)}</span><span class="ur-rot">dias de falta somados</span></div>
+        <div><span class="ur-num">${faltas.filter((r) => r.qtd <= 0).length}</span><span class="ur-rot">ainda zerados</span></div>
+      </div>
+      ${faltaMostrar.map((r) => `
+        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.name}: ${Math.round(r.diasZero)} dia(s) sem estoque${r.qtd <= 0 ? " — zerado agora" : " — já voltou a ter"}`)}">
+          <div class="hb-name">${escapeHtml(r.name)}${r.qtd <= 0 ? '<span class="badge badge-zero">zerado agora</span>' : '<span class="badge badge-chegou">voltou</span>'}${r.qtd <= 0 && Number(r.ultMovOlostech) ? `<small class="pedir-meta">último movimento no Olostech: ${new Date(Number(r.ultMovOlostech)).toLocaleDateString("pt-BR")}</small>` : ""}</div>
+          <div class="hb-track"><div class="hb-bar falta" style="width:${Math.max(2, (r.diasZero / maxFalta) * 100)}%"></div></div>
+          <div class="cob-val"><b>${Math.round(r.diasZero)}</b> dia${Math.round(r.diasZero) === 1 ? "" : "s"}</div>
+        </div>`).join("")}
+      ${faltas.length > 10 ? `<button class="btn-ghost btn-sm ver-mais" data-dashfalta="1">${dashFaltaTodos ? "Mostrar só os 10 primeiros" : `Ver todos os ${faltas.length} itens`}</button>` : ""}`
+      : `<div class="chart-sub">Nenhum item ficou em falta nesse período.</div>`;
+
+    // Enfermagem: uso real (site + acerto do relatório) e quem registra
+    const idsEnf = new Set(enfItems().map((it) => it.id));
+    const movEnf = movements.filter((m) => idsEnf.has(m.itemId) && m.ts >= d.corte);
+    const noSite = movEnf.filter((m) => m.source === "enfermagem" && isConsumo(m));
+    const acerto = movEnf.filter((m) => m.source === "import" && m.delta < 0);
+    const unSite = noSite.reduce((a, m) => a - m.delta, 0), unAcerto = acerto.reduce((a, m) => a - m.delta, 0);
+    const rsEnf = [...noSite, ...acerto].reduce((a, m) => a - m.delta * precoDe(m.itemId), 0);
+    const pctSite = unSite + unAcerto > 0 ? Math.round((unSite / (unSite + unAcerto)) * 100) : 0;
+    const quem = {};
+    movEnf.filter((m) => m.source === "enfermagem" && m.delta < 0).forEach((m) => {
+      const k = chaveNome(m.responsavel) || "(sem nome)";
+      const r = quem[k] = quem[k] || { nome: m.responsavel ? nomeBonito(m.responsavel) : "(sem nome)", n: 0, un: 0 };
+      r.n++; r.un += -m.delta;
+    });
+    const quemLista = Object.values(quem).sort((a, b) => b.n - a.n || b.un - a.un);
+    const maxQuem = Math.max(...quemLista.map((r) => r.n), 1);
+    const enfHtml = unSite + unAcerto > 0 ? `
+      <div class="ur-resumo">
+        <div><span class="ur-num">${fmtN(unSite + unAcerto)}</span><span class="ur-rot">unidades usadas</span></div>
+        <div><span class="ur-num">${fmtRS(rsEnf)}</span><span class="ur-rot">em valor</span></div>
+        <div><span class="ur-num">${pctSite}%</span><span class="ur-rot">registrado no site</span></div>
+        <div><span class="ur-num">${pendentesOlostech.length}</span><span class="ur-rot">baixas a lançar no Olostech</span></div>
+      </div>
+      <div class="chart-sub" style="margin-top:4px">${fmtN(unSite)} unidade(s) registradas no site e ${fmtN(unAcerto)} que só apareceram no acerto do relatório (saíram sem registro).</div>
+      ${quemLista.length ? `<h4 class="dash-sub">Quem registrou baixas</h4>
+        ${quemLista.map((r) => `
+          <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.nome}: ${r.n} registro(s), ${fmtN(r.un)} unidade(s)`)}">
+            <div class="hb-name">${escapeHtml(r.nome)}<small class="pedir-meta">${fmtN(r.un)} unidade(s)</small></div>
+            <div class="hb-track"><div class="hb-bar enf" style="width:${Math.max(2, (r.n / maxQuem) * 100)}%"></div></div>
+            <div class="cob-val"><b>${r.n}</b> registro${r.n === 1 ? "" : "s"}</div>
+          </div>`).join("")}` : `<div class="chart-sub">Nenhuma baixa registrada no site nesse período.</div>`}`
+      : `<div class="chart-sub">Nenhum uso de medicamentos da Enfermagem nesse período.</div>`;
+
     // tabela completa (e planilha)
     const tab = [...d.linhas].sort((a, b) => valorMed(b) - valorMed(a));
     dashLinhasCsv = tab;
@@ -2013,9 +2178,9 @@
       </div>
       ${avisoHist ? `<div class="stats-note">${avisoHist}Quanto mais relatórios importados, mais completo fica.</div>` : ""}
       <div class="kpis dash-kpis">
-        <div class="kpi"><div class="kpi-label">Saiu no período</div><div class="kpi-value">${fmtRS(d.totRs)}</div><div class="kpi-sub">${fmtN(unSaiu)} unidades · ${d.linhas.length} itens</div></div>
+        <div class="kpi"><div class="kpi-label">Saiu no período</div><div class="kpi-value">${fmtRS(d.totRs)}</div><div class="kpi-sub">${fmtN(unSaiu)} unidades · ${d.linhas.length} itens</div>${comparacaoHtml(d.totRs, saiuAnterior.rs, temAnterior)}</div>
         <div class="kpi k-white"><div class="kpi-label">Valor em estoque hoje</div><div class="kpi-value">${fmtRS(valorEstoque)}</div><div class="kpi-sub">${lista.filter((it) => it.qtd > 0).length} itens com saldo</div></div>
-        <div class="kpi k-green"><div class="kpi-label">Chegou no período</div><div class="kpi-value">${fmtRS(rsChegou)}</div><div class="kpi-sub">${diasEntrega} entrega${diasEntrega === 1 ? "" : "s"} · ${itensChegou} itens</div></div>
+        <div class="kpi k-green"><div class="kpi-label">Chegou no período</div><div class="kpi-value">${fmtRS(rsChegou)}</div><div class="kpi-sub">${diasEntrega} entrega${diasEntrega === 1 ? "" : "s"} · ${itensChegou} itens</div>${comparacaoHtml(rsChegou, chegouAnterior, temAnterior)}</div>
         <div class="kpi k-yellow"><div class="kpi-label">Acabam em até 7 dias</div><div class="kpi-value">${acabam}</div><div class="kpi-sub">e ${zerados} zerado${zerados === 1 ? "" : "s"} agora</div></div>
       </div>
       <div class="card">
@@ -2028,6 +2193,21 @@
           <h3>Os que mais saem</h3>
           <div class="chart-sub">Ranking ${rot} nos últimos ${Math.round(d.diasBase) || 1} dia(s), com a média por mês e quanto o saldo ainda dura.</div>
           ${topHtml}
+        </div>
+        <div class="chart-block">
+          <h3>Saídas fora do normal</h3>
+          <div class="chart-sub">Quando sai de uma vez muito mais que o ritmo do item (10× o normal e pelo menos metade do saldo). Pode ser erro de lançamento, transferência ou uma saída que vale conferir.</div>
+          ${foraHtml}
+        </div>
+        <div class="chart-block">
+          <h3>Faltas</h3>
+          <div class="chart-sub">Itens que ficaram zerados no período e por quantos dias. O site sabe que zerou quando o relatório é importado.</div>
+          ${faltaHtml}
+        </div>
+        <div class="chart-block dash-enf">
+          <h3>Enfermagem</h3>
+          <div class="chart-sub">Medicamentos de uso da Enfermagem no período: o que foi registrado no site somado ao acerto do relatório.</div>
+          ${enfHtml}
         </div>
         <div class="chart-block">
           <h3>Curva ABC</h3>
@@ -2077,6 +2257,8 @@
     const medida = e.target.closest("[data-dashmed]");
     if (medida) { dashMedida = medida.dataset.dashmed; renderDash(); return; }
     if (e.target.closest("[data-dashtop]")) { dashTopTodos = !dashTopTodos; renderDash(); return; }
+    if (e.target.closest("[data-dashfora]")) { dashForaTodos = !dashForaTodos; renderDash(); return; }
+    if (e.target.closest("[data-dashfalta]")) { dashFaltaTodos = !dashFaltaTodos; renderDash(); return; }
     if (e.target.closest("[data-dashcsv]")) baixarPlanilhaDash();
   });
 
@@ -2183,11 +2365,6 @@
       ${comMin.length > 15 ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="bul">${geralBulTodos ? "Mostrar só os 15 primeiros" : `Ver todos os ${comMin.length} itens`}</button>` : ""}`
       : `<div class="stats-note">Nenhum item tem estoque mínimo cadastrado ainda. Para aparecer aqui, toque no lápis de um item na Lista e preencha "Estoque mínimo". Dica: use o consumo por mês do gráfico "Mais consumidos" acima como ponto de partida.</div>`;
 
-    // Movimentações de cada item, em ordem de data (usadas em "dias zerado")
-    const movsDoItem = {};
-    movements.forEach((m) => { (movsDoItem[m.itemId] = movsDoItem[m.itemId] || []).push(m); });
-    Object.values(movsDoItem).forEach((ms) => ms.sort((a, b) => a.ts - b.ts));
-
     // 5) O que pedir: quantidade para o estoque durar "geralCobertura" dias
     //    (nunca abaixo do estoque mínimo, se houver)
     const porDiaDe = Object.fromEntries(cob.map((c) => [c.id, c.porDia]));
@@ -2227,25 +2404,7 @@
     const inicioHist = movements.length ? Math.min(...movements.map((m) => m.ts)) : agora;
     const iniJanela = Math.max(agora - geralBase * DIA, inicioHist);
     const diasJanela = Math.max(1, Math.round((agora - iniJanela) / DIA));
-    const zerados = lista.map((it) => {
-      const ms = movsDoItem[it.id] || [];
-      let cursor = iniJanela, q, i = 0;
-      const antes = ms.filter((m) => m.ts <= iniJanela);
-      if (antes.length) { q = Number(antes[antes.length - 1].qtyAfter) || 0; i = antes.length; }
-      else if (ms.length) {
-        const p = ms[0];
-        if (p.source === "import" && Number(p.qtyBefore) === 0) { cursor = Math.max(p.ts, iniJanela); q = Number(p.qtyAfter) || 0; i = 1; }
-        else q = Number(p.qtyBefore) || 0;
-      } else q = it.qtd;
-      let zeroMs = 0;
-      for (; i < ms.length; i++) {
-        if (q === 0) zeroMs += ms[i].ts - cursor;
-        cursor = ms[i].ts;
-        q = Number(ms[i].qtyAfter) || 0;
-      }
-      if (q === 0) zeroMs += agora - cursor;
-      return { ...it, diasZero: zeroMs / DIA };
-    }).filter((r) => r.diasZero >= 0.5).sort((a, b) => b.diasZero - a.diasZero);
+    const zerados = calcDiasZerado(lista, iniJanela, agora);
     const maxZero = Math.max(...zerados.map((r) => r.diasZero), 1);
     const zeroMostrar = geralZeroTodos ? zerados : zerados.slice(0, LIM_NOVOS);
     const zeroHtml = zerados.length ? `
