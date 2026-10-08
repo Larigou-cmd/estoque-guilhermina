@@ -93,6 +93,39 @@
   #navGeral.active { color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 18px rgba(0,240,255,0.3), inset 0 0 18px rgba(0,240,255,0.08); }
   #navEnf.active { color: var(--magenta); border-color: var(--magenta); box-shadow: 0 0 18px rgba(255,47,208,0.3), inset 0 0 18px rgba(255,47,208,0.08); }
   #enfSection { --corner: var(--magenta); }
+  #navDash.active { color: #fff; border-color: #fff; box-shadow: 0 0 18px rgba(255,255,255,0.22), inset 0 0 18px rgba(255,255,255,0.06); }
+  @media (max-width: 480px) { .main-nav { gap: 6px; } .main-nav button { padding: 11px 4px; font-size: 0.86rem; gap: 5px; } }
+  @media (max-width: 420px) { .main-nav button .ic { display: none; } }
+
+  /* ----- Dashboard ----- */
+  .dash-filtros { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+  .kpis.dash-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  .dash-kpis .kpi-value { font-size: 1.75rem; white-space: nowrap; }
+  @media (max-width: 480px) {
+    .kpis.dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .dash-kpis .kpi { text-align: left; padding: 10px 10px 9px; }
+    .dash-kpis .kpi-value { font-size: 1.3rem; }
+    .dash-kpis .kpi-sub { font-size: 0.74rem; }
+  }
+  .kpi-sub { margin-top: 6px; font-size: 0.8rem; color: var(--text-muted); }
+  #dashBody .hb-bar { background: var(--cyan); }
+  #dashBody .cob-row:hover .hb-bar, #dashBody .cob-row:focus-visible .hb-bar { box-shadow: 0 0 12px var(--cyan); }
+  @media (min-width: 481px) { #dashBody .cob-row { grid-template-columns: minmax(110px, 40%) 1fr auto; } }
+  .vb-cols { display: flex; align-items: stretch; gap: 2px; margin-bottom: 6px; }
+  .vb-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; outline: none; }
+  .vb-area { height: 150px; width: 100%; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--line); }
+  .vb-bar { width: 72%; max-width: 46px; background: var(--cyan); border-radius: 4px 4px 0 0; }
+  .vb-col:hover .vb-bar, .vb-col:focus-visible .vb-bar { box-shadow: 0 0 12px var(--cyan); }
+  .vb-bar.parcial { background: repeating-linear-gradient(45deg, var(--cyan) 0 5px, rgba(0,240,255,0.35) 5px 9px); }
+  .vb-val { min-height: 1.3em; font-size: 0.78rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .vb-lab { margin-top: 6px; font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; }
+  .vb-nota { font-size: 0.76rem; color: var(--text-muted); }
+  .dash-entradas .vb-bar { background: var(--lime); }
+  .dash-entradas .vb-bar.parcial { background: repeating-linear-gradient(45deg, var(--lime) 0 5px, rgba(182,255,59,0.35) 5px 9px); }
+  .dash-entradas .vb-col:hover .vb-bar, .dash-entradas .vb-col:focus-visible .vb-bar { box-shadow: 0 0 12px var(--lime); }
+  .abc-lista { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 0.82rem; }
+  .abc-item b { color: var(--text-muted); font-weight: 400; }
+  .dash-tabela summary { cursor: pointer; color: var(--cyan); margin-bottom: 8px; }
 
   /* ----- Painéis ----- */
   .card { padding: 18px; margin-bottom: 16px; }
@@ -499,6 +532,7 @@
   <div class="main-nav">
     <button class="active" id="navGeral"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Estoque Geral</button>
     <button id="navEnf"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg>Enfermagem</button>
+    <button id="navDash"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Dashboard</button>
   </div>
 
   <div id="geralSection">
@@ -601,6 +635,10 @@
       </div>
     </div>
 
+  </div>
+
+  <div id="dashSection" style="display:none">
+    <div id="dashBody"></div>
   </div>
 </div>
 <div class="chart-tip" id="chartTip" role="tooltip"></div>
@@ -1039,9 +1077,10 @@
     for (const line of mergedLines) {
       const m = line.match(lineRe);
       if (!m) continue;
-      const [, code, name, unit, , ultMov, saldoRaw] = m;
+      const [, code, name, unit, , ultMov, saldoRaw, valorRaw] = m;
       const qty = parseInt(saldoRaw.replace(/\./g, ""), 10) || 0;
-      results.push({ code, name: name.trim(), unit: unit.trim(), qty, ultMov });
+      const valor = parseFloat(valorRaw.replace(/\./g, "").replace(",", ".")) || 0;
+      results.push({ code, name: name.trim(), unit: unit.trim(), qty, ultMov, valor });
     }
     return results;
   }
@@ -1279,6 +1318,7 @@
           notes: prev.notes || (it.code ? "" : "via consulta pública (sem código Olostech)"),
           code: it.code || prev.code || "",
           ...(dataBRparaTs(it.ultMov) ? { ultMovOlostech: dataBRparaTs(it.ultMov) } : {}),
+          ...(it.qty > 0 && it.valor > 0 ? { precoUnit: Math.round((it.valor / it.qty) * 10000) / 10000 } : {}),
           updatedAt: Date.now(),
         }, { merge: true });
         // saldo de um item que já existia subiu = mercadoria que chegou
@@ -1494,6 +1534,7 @@
         items = next;
         render();
         renderEnf();
+        if (currentSection === "dash") renderDash();
       },
       (err) => {
         subtitle.textContent = "Erro de conexão com o banco. Verifique as regras do Firestore e recarregue a página.";
@@ -1509,6 +1550,7 @@
         recalcularEntradas();
         render();
         renderEnf();
+        if (currentSection === "dash") renderDash();
       },
       () => { /* estatística é auxiliar — falha aqui não impede o uso do estoque */ }
     );
@@ -1822,7 +1864,7 @@
   }
   function mostrarDica(alvo) { posicionarDica(alvo.dataset.tip, alvo.getBoundingClientRect()); }
   function esconderDica() { chartTip.style.display = "none"; }
-  ["enfPainelBody", "geralPainelBody"].forEach((corpo) => {
+  ["enfPainelBody", "geralPainelBody", "dashBody"].forEach((corpo) => {
     ["mouseover", "focusin"].forEach((ev) => el(corpo).addEventListener(ev, (e) => {
       if (e.target.closest(".linha-box svg")) return; // o gráfico de linha cuida da própria dica
       const alvo = e.target.closest("[data-tip]");
@@ -1831,6 +1873,212 @@
     ["mouseleave", "focusout"].forEach((ev) => el(corpo).addEventListener(ev, esconderDica));
   });
   window.addEventListener("scroll", esconderDica, { passive: true });
+
+  // ----- Dashboard: saídas, valores (R$) e entradas -----
+  let dashDias = 30;        // período mostrado
+  let dashMedida = "un";    // "un" = unidades, "rs" = valor em R$
+  let dashTopTodos = false;
+  let dashLinhasCsv = [];
+  const fmtRS = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: v >= 1000 ? 0 : 2 });
+  const fmtN = (v) => Math.round(v).toLocaleString("pt-BR");
+  // Preço por unidade = "Valor R$" ÷ saldo do último relatório importado
+  function precoDe(id) { const p = Number((items[id] || {}).precoUnit); return p > 0 ? p : 0; }
+
+  function dadosDash() {
+    const agora = Date.now();
+    const primeiro = movements.length ? Math.min(...movements.map((m) => m.ts)) : agora;
+    const diasHist = Math.max(1, (agora - primeiro) / DIA);
+    const diasBase = Math.min(dashDias, diasHist);
+    const corte = Math.max(agora - dashDias * DIA, primeiro);
+    const saidas = movements.filter((m) => m.ts >= corte && isConsumo(m));
+    const entradas = movements.filter((m) => m.ts >= corte && isEntrada(m));
+    const porItem = {};
+    saidas.forEach((m) => {
+      const r = porItem[m.itemId] = porItem[m.itemId] || { id: m.itemId, un: 0, rs: 0 };
+      r.un += -m.delta;
+      r.rs += -m.delta * precoDe(m.itemId);
+    });
+    const linhas = Object.values(porItem).map((r) => {
+      const it = items[r.id] || {};
+      const saldo = Number(it.qty) || 0;
+      const porDia = r.un / diasBase;
+      return { ...r, nome: it.name || r.id, unid: it.unit || "", saldo, cmm: porDia * 30, dura: porDia ? saldo / porDia : Infinity, semPreco: !precoDe(r.id) };
+    });
+    // Curva ABC pelo valor que saiu: A = itens que somam os primeiros 80% do valor, B = até 95%, C = o resto
+    const totRs = linhas.reduce((a, r) => a + r.rs, 0);
+    let acum = 0;
+    [...linhas].sort((a, b) => b.rs - a.rs).forEach((r) => {
+      const antes = totRs > 0 ? acum / totRs : 1;
+      acum += r.rs;
+      r.abc = r.rs <= 0 ? "C" : antes < 0.8 ? "A" : antes < 0.95 ? "B" : "C";
+    });
+    return { agora, diasHist, diasBase, corte, saidas, entradas, linhas, totRs };
+  }
+
+  // Colunas por semana (segunda a domingo). A semana atual ainda está em andamento.
+  function porSemana(movs, corte, agora, valor) {
+    const semanas = [];
+    for (let s = inicioSemana(corte); s <= agora; s = inicioSemana(s + 8 * DIA)) semanas.push({ ini: s, v: 0, un: 0, rs: 0 });
+    movs.forEach((m) => {
+      const s = semanas.find((x) => x.ini === inicioSemana(m.ts));
+      if (!s) return;
+      const q = Math.abs(m.delta);
+      s.un += q; s.rs += q * precoDe(m.itemId);
+    });
+    semanas.forEach((s) => { s.v = valor === "rs" ? s.rs : s.un; s.parcial = s.ini === inicioSemana(agora); });
+    return semanas;
+  }
+
+  function colunasHtml(semanas, rotulo) {
+    if (!semanas.some((s) => s.v > 0)) return `<div class="chart-sub">Nada registrado nesse período.</div>`;
+    const max = Math.max(...semanas.map((s) => s.v), 1);
+    const iMax = semanas.findIndex((s) => s.v === max);
+    const fmt = dashMedida === "rs" ? fmtRS : fmtN;
+    return `<div class="vb-cols">${semanas.map((s, i) => {
+      const fim = new Date(s.ini + 6 * DIA);
+      const dica = `Semana de ${fmtDiaMes(s.ini)} a ${fmtDiaMes(fim)}${s.parcial ? " (em andamento)" : ""}: ${fmtN(s.un)} ${rotulo} · ${fmtRS(s.rs)}`;
+      return `<div class="vb-col" tabindex="0" data-tip="${escapeHtml(dica)}">
+        <span class="vb-val">${i === iMax || i === semanas.length - 1 ? fmt(s.v) : ""}</span>
+        <div class="vb-area"><div class="vb-bar${s.parcial ? " parcial" : ""}" style="height:${s.v > 0 ? Math.max(1.5, (s.v / max) * 100) : 0}%"></div></div>
+        <span class="vb-lab">${fmtDiaMes(s.ini)}${s.parcial ? "*" : ""}</span>
+      </div>`;
+    }).join("")}</div>
+    ${semanas.some((s) => s.parcial) ? `<div class="vb-nota">* semana atual, ainda em andamento (barra listrada)</div>` : ""}`;
+  }
+
+  function renderDash() {
+    const body = el("dashBody");
+    if (!body) return;
+    const d = dadosDash();
+    const lista = Object.entries(items).map(([id, it]) => ({ id, ...it, qtd: Number(it.qty) || 0 }));
+    const valorEstoque = lista.reduce((a, it) => a + it.qtd * precoDe(it.id), 0);
+    const unSaiu = d.linhas.reduce((a, r) => a + r.un, 0);
+    const rsChegou = d.entradas.reduce((a, m) => a + m.delta * precoDe(m.itemId), 0);
+    const diasEntrega = new Set(d.entradas.map((m) => new Date(m.ts).toDateString())).size;
+    const itensChegou = new Set(d.entradas.map((m) => m.itemId)).size;
+    const { diasBase: baseUrg, consumo } = consumoRecente(dashDias);
+    const acabam = lista.filter((it) => it.qtd > 0 && consumo[it.id] && it.qtd / (consumo[it.id] / baseUrg) <= 7).length;
+    const zerados = lista.filter((it) => it.qtd <= 0).length;
+    const med = dashMedida;
+    const fmtMed = med === "rs" ? fmtRS : fmtN;
+    const valorMed = (r) => (med === "rs" ? r.rs : r.un);
+
+    // os que mais saem
+    const top = [...d.linhas].filter((r) => valorMed(r) > 0).sort((a, b) => valorMed(b) - valorMed(a));
+    const topMostrar = dashTopTodos ? top : top.slice(0, 10);
+    const maxTop = Math.max(...top.map(valorMed), 1);
+    const textoDura = (r) => (!Number.isFinite(r.dura) ? "" : r.saldo <= 0 ? " · zerado" : ` · dura ≈ ${r.dura > 90 ? "90+" : Math.round(r.dura)} dia${Math.round(r.dura) === 1 ? "" : "s"}`);
+    const topHtml = top.length ? `
+      ${topMostrar.map((r) => `
+        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.nome}: saiu ${fmtN(r.un)} ${r.unid} · ${r.semPreco ? "sem preço" : fmtRS(r.rs)} · ≈ ${fmtN(r.cmm)}/mês`)}">
+          <div class="hb-name">${escapeHtml(r.nome)}<small class="pedir-meta">≈ ${fmtN(r.cmm)}/mês${textoDura(r)}</small></div>
+          <div class="hb-track"><div class="hb-bar" style="width:${Math.max(1, (valorMed(r) / maxTop) * 100)}%"></div></div>
+          <div class="cob-val"><b>${fmtMed(valorMed(r))}</b></div>
+        </div>`).join("")}
+      ${top.length > 10 ? `<button class="btn-ghost btn-sm ver-mais" data-dashtop="1">${dashTopTodos ? "Mostrar só os 10 primeiros" : `Ver todos os ${top.length} itens`}</button>` : ""}`
+      : `<div class="chart-sub">Nenhuma saída nesse período.</div>`;
+
+    // curva ABC
+    const classes = ["A", "B", "C"].map((c) => {
+      const rs = d.linhas.filter((r) => r.abc === c);
+      return { c, n: rs.length, rs: rs.reduce((a, r) => a + r.rs, 0), itens: rs.sort((a, b) => b.rs - a.rs) };
+    });
+    const desc = { A: "pesam mais no orçamento", B: "peso médio", C: "pouco valor" };
+    const abcHtml = d.totRs > 0 ? `
+      ${classes.map((k) => `
+        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`Classe ${k.c}: ${k.n} item(ns) — ${fmtRS(k.rs)} (${Math.round((k.rs / d.totRs) * 100)}% do valor que saiu)`)}">
+          <div class="hb-name"><b>Classe ${k.c}</b> · ${k.n} ${k.n === 1 ? "item" : "itens"}<small class="pedir-meta">${desc[k.c]}</small></div>
+          <div class="hb-track"><div class="hb-bar" style="width:${Math.max(1, (k.rs / d.totRs) * 100)}%"></div></div>
+          <div class="cob-val"><b>${Math.round((k.rs / d.totRs) * 100)}%</b></div>
+        </div>`).join("")}
+      <div class="abc-lista"><span class="chart-sub" style="margin:0">Classe A:</span> ${classes[0].itens.slice(0, 10).map((r) => `<span class="abc-item">${escapeHtml(r.nome)} <b>${fmtRS(r.rs)}</b></span>`).join("")}${classes[0].n > 10 ? `<span class="abc-item">+ ${classes[0].n - 10} na tabela abaixo</span>` : ""}</div>`
+      : `<div class="chart-sub">Ainda sem preços — importe um relatório do Olostech para os valores aparecerem.</div>`;
+
+    // tabela completa (e planilha)
+    const tab = [...d.linhas].sort((a, b) => valorMed(b) - valorMed(a));
+    dashLinhasCsv = tab;
+    const semPreco = d.linhas.filter((r) => r.semPreco).length;
+    const avisoHist = d.diasHist < dashDias
+      ? `O histórico começou em ${new Date(Date.now() - d.diasHist * DIA).toLocaleDateString("pt-BR")} — o período mostra só os ${Math.round(d.diasHist)} dia(s) que existem. `
+      : "";
+    const rot = med === "rs" ? "em R$" : "em unidades";
+
+    body.innerHTML = `
+      <div class="dash-filtros">
+        <div class="filters" role="group" aria-label="Período">${[7, 15, 30, 90].map((n) => `<button class="chip${n === dashDias ? " active" : ""}" data-dashdias="${n}">${n} dias</button>`).join("")}</div>
+        <div class="filters" role="group" aria-label="Medir por">
+          <button class="chip${med === "un" ? " active" : ""}" data-dashmed="un">Unidades</button>
+          <button class="chip${med === "rs" ? " active" : ""}" data-dashmed="rs">R$</button>
+        </div>
+      </div>
+      ${avisoHist ? `<div class="stats-note">${avisoHist}Quanto mais relatórios importados, mais completo fica.</div>` : ""}
+      <div class="kpis dash-kpis">
+        <div class="kpi"><div class="kpi-label">Saiu no período</div><div class="kpi-value">${fmtRS(d.totRs)}</div><div class="kpi-sub">${fmtN(unSaiu)} unidades · ${d.linhas.length} itens</div></div>
+        <div class="kpi k-white"><div class="kpi-label">Valor em estoque hoje</div><div class="kpi-value">${fmtRS(valorEstoque)}</div><div class="kpi-sub">${lista.filter((it) => it.qtd > 0).length} itens com saldo</div></div>
+        <div class="kpi k-green"><div class="kpi-label">Chegou no período</div><div class="kpi-value">${fmtRS(rsChegou)}</div><div class="kpi-sub">${diasEntrega} entrega${diasEntrega === 1 ? "" : "s"} · ${itensChegou} itens</div></div>
+        <div class="kpi k-yellow"><div class="kpi-label">Acabam em até 7 dias</div><div class="kpi-value">${acabam}</div><div class="kpi-sub">e ${zerados} zerado${zerados === 1 ? "" : "s"} agora</div></div>
+      </div>
+      <div class="card">
+        <div class="chart-block">
+          <h3>Saídas por semana</h3>
+          <div class="chart-sub">Total que saiu em cada semana, ${rot}. Passe o dedo ou o mouse numa coluna para ver unidades e R$.</div>
+          ${colunasHtml(porSemana(d.saidas, d.corte, d.agora, med), "unidades")}
+        </div>
+        <div class="chart-block">
+          <h3>Os que mais saem</h3>
+          <div class="chart-sub">Ranking ${rot} nos últimos ${Math.round(d.diasBase) || 1} dia(s), com a média por mês e quanto o saldo ainda dura.</div>
+          ${topHtml}
+        </div>
+        <div class="chart-block">
+          <h3>Curva ABC</h3>
+          <div class="chart-sub">Divide os itens pelo valor que saiu: a classe A são poucos itens que somam 80% do gasto — os que mais valem a pena controlar de perto.</div>
+          ${abcHtml}
+        </div>
+        <div class="chart-block dash-entradas">
+          <h3>Entradas por semana</h3>
+          <div class="chart-sub">O que chegou de mercadoria em cada semana, ${rot}.</div>
+          ${colunasHtml(porSemana(d.entradas, d.corte, d.agora, med), "unidades")}
+        </div>
+        <div class="chart-block">
+          <h3>Tabela completa</h3>
+          <div class="chart-sub">Todos os ${tab.length} itens que tiveram saída no período.${semPreco ? ` ${semPreco} item(ns) estão sem preço (estavam zerados no relatório) e não entram no R$.` : ""}</div>
+          <div class="pedir-acoes" style="margin:0 0 10px"><button class="btn-outline btn-sm" data-dashcsv="1">Baixar planilha (Excel)</button></div>
+          <details class="dash-tabela"><summary>Ver tabela</summary>
+            <div class="hist-wrap"><table class="hist-table">
+              <thead><tr><th>Item</th><th>Saiu</th><th>R$</th><th>Por mês</th><th>Saldo</th><th>Dura</th><th>ABC</th></tr></thead>
+              <tbody>${tab.map((r) => `<tr><td>${escapeHtml(r.nome)}</td><td>${fmtN(r.un)}</td><td>${r.semPreco ? "—" : fmtRS(r.rs)}</td><td>${fmtN(r.cmm)}</td><td>${fmtN(r.saldo)}</td><td>${!Number.isFinite(r.dura) ? "—" : r.saldo <= 0 ? "zerado" : Math.round(r.dura) + " d"}</td><td>${r.abc}</td></tr>`).join("")}</tbody>
+            </table></div>
+          </details>
+        </div>
+      </div>`;
+  }
+
+  // Planilha CSV que abre no Excel (separador ";" e vírgula decimal, como no Brasil)
+  function baixarPlanilhaDash() {
+    const num = (v, casas) => v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas, useGrouping: false });
+    const cel = (t) => `"${String(t).replace(/"/g, '""')}"`;
+    const linhas = [["Item", "Unidade", "Saiu (un)", "Saiu (R$)", "Por mês (un)", "Saldo hoje", "Dura (dias)", "Classe ABC"].map(cel).join(";")];
+    dashLinhasCsv.forEach((r) => linhas.push([
+      cel(r.nome), cel(r.unid), r.un, r.semPreco ? "" : num(r.rs, 2), num(r.cmm, 0), r.saldo,
+      Number.isFinite(r.dura) ? num(r.dura, 0) : "", r.abc,
+    ].join(";")));
+    const blob = new Blob(["﻿" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `saidas-${dashDias}-dias-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    showToast("Planilha baixada");
+  }
+
+  el("dashBody").addEventListener("click", (e) => {
+    const dias = e.target.closest("[data-dashdias]");
+    if (dias) { dashDias = parseInt(dias.dataset.dashdias, 10); renderDash(); return; }
+    const medida = e.target.closest("[data-dashmed]");
+    if (medida) { dashMedida = medida.dataset.dashmed; renderDash(); return; }
+    if (e.target.closest("[data-dashtop]")) { dashTopTodos = !dashTopTodos; renderDash(); return; }
+    if (e.target.closest("[data-dashcsv]")) baixarPlanilhaDash();
+  });
 
   // ----- Painel de gráficos do Estoque Geral -----
   let geralBase = 30;          // dias de consumo usados na estimativa
@@ -2434,16 +2682,22 @@
     currentSection = sec;
     el("navGeral").classList.toggle("active", sec === "geral");
     el("navEnf").classList.toggle("active", sec === "enf");
+    el("navDash").classList.toggle("active", sec === "dash");
     el("geralSection").style.display = sec === "geral" ? "" : "none";
     el("enfSection").style.display = sec === "enf" ? "" : "none";
+    el("dashSection").style.display = sec === "dash" ? "" : "none";
+    el("addFab").style.display = sec === "dash" ? "none" : "";
+    esconderDica();
     document.body.classList.toggle("sec-enf", sec === "enf");
     el("addFab").setAttribute("aria-label", sec === "enf" ? "Registrar retirada" : "Novo item");
     el("addFab").title = sec === "enf" ? "Registrar retirada" : "Novo item";
     if (sec === "enf") renderEnf();
+    if (sec === "dash") renderDash();
   }
 
   el("navGeral").addEventListener("click", () => switchSection("geral"));
   el("navEnf").addEventListener("click", () => switchSection("enf"));
+  el("navDash").addEventListener("click", () => switchSection("dash"));
 
   el("enfSearchInput").addEventListener("input", (e) => { enfSearchTerm = e.target.value; renderEnf(); });
 
