@@ -1671,7 +1671,8 @@
     col.onSnapshot(
       (snap) => {
         const next = {};
-        snap.docs.forEach((d) => { next[d.id] = d.data(); });
+        // Despadronizados continuam no relatório do Olostech até saírem do sistema, mas não aparecem no site
+        snap.docs.forEach((d) => { const it = d.data(); if (it.despadronizado !== true) next[d.id] = it; });
         items = next;
         render();
         renderEnf();
