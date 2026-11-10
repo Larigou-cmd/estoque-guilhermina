@@ -77,7 +77,7 @@
   }
   header p { margin: 0; color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
   header p::before {
-    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    content: ""; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
     background: var(--lime); color: var(--lime); box-shadow: var(--glow);
   }
 
@@ -466,8 +466,8 @@
   .pend-tabela td:nth-child(3) { white-space: normal; min-width: 110px; }
   .pend-tabela th, .pend-tabela td { padding-left: 6px; padding-right: 6px; }
   .pdf-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
-  .pdf-pick label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 11px 16px; border-radius: 10px; font-weight: 600; }
-  .pdf-pick label:focus-within, .pdf-pick label:hover { filter: brightness(1.1); }
+  .pdf-pick .btn-primary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 11px 16px; border-radius: 10px; font-weight: 600; }
+  .pdf-pick .btn-primary:hover { filter: brightness(1.1); }
   .pdf-status { font-size: 0.84rem; color: var(--text-muted); }
   .pdf-status b { color: var(--text); }
   .colar-texto { margin-bottom: 10px; font-size: 0.84rem; }
@@ -477,8 +477,8 @@
   .import-erro { margin-top: 8px; padding: 8px 10px; color: var(--red); border: 1px solid rgba(255,42,85,0.5); background: rgba(255,42,85,0.08); }
   .badge-chegou { color: var(--lime); background: rgba(182,255,59,0.08); }
   .chegou-dia { margin-bottom: 14px; }
-  .chegou-dia h3 { margin: 0 0 6px; font-size: 0.9rem; font-weight: 600; color: var(--lime); }
-  .chegou-dia h3 span { color: var(--text-muted); font-weight: 400; }
+  .chegou-dia h4 { margin: 0 0 6px; font-size: 0.9rem; font-weight: 600; color: var(--lime); }
+  .chegou-dia h4 span { color: var(--text-muted); font-weight: 400; }
   .chegou-lista { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 12px; font-size: 0.86rem; }
   .chegou-lista .q { color: var(--lime); font-weight: 700; text-align: right; }
   .chegou-lista .s { color: var(--text-muted); text-align: right; }
@@ -558,6 +558,59 @@
     .kpi-value { font-size: 1.45rem; margin-top: 2px; }
     .field-row { flex-direction: column; gap: 0; }
   }
+  /* ----- Situação dos dados no cabeçalho: a cor acompanha o texto ----- */
+  header p.st-carregando::before { background: var(--text-muted); color: var(--text-muted); box-shadow: none; }
+  header p.st-velho, header p.st-velho::before { color: var(--amber); }
+  header p.st-velho::before { background: var(--amber); }
+  header p.st-erro, header p.st-erro::before { color: var(--red); }
+  header p.st-erro::before { background: var(--red); }
+
+  /* ----- Ordem da lista (fica junto das abas, logo acima da lista) ----- */
+  .tabbar .btn-ordem { flex: none; align-self: center; margin-left: 8px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #enfSection .btn-ordem { color: var(--magenta); border-color: rgba(255,47,208,0.55); }
+  #enfSection .btn-ordem:hover { background: rgba(255,47,208,0.08); box-shadow: 0 0 12px rgba(255,47,208,0.35); }
+  .toolbar .btn-sm { flex: none; white-space: nowrap; }
+  .toolbar .btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+  /* ----- Mostrador que está filtrando a lista ----- */
+  .kpi.ativo { background-color: color-mix(in srgb, var(--c) 9%, var(--panel)); border-color: color-mix(in srgb, var(--c) 55%, var(--line)); }
+  .modal:focus { outline: none; }
+
+  /* ----- Importação: andamento e resultado que fica na tela ----- */
+  .import-andamento { min-height: 1.3em; font-size: 0.86rem; color: var(--cyan); }
+  .import-fim-tit { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 1.05rem; font-weight: 700; color: var(--lime); }
+  .import-fim.com-falha .import-fim-tit { color: var(--amber); }
+  .import-fim ul { list-style: none; margin: 0 0 12px; padding: 0; }
+  .import-fim li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .import-fim li:first-child { border-top: none; }
+  .import-fim li b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .import-fim-nota { margin: 0 0 10px; font-size: 0.86rem; color: var(--text-muted); overflow-wrap: anywhere; }
+  .import-fim-nota b { color: var(--red); font-weight: 600; }
+
+  /* ----- Grupos de gráficos dentro do cartão (sem cartão dentro de cartão) ----- */
+  .graf-grupo { margin: 0; border-top: 1px solid var(--line); }
+  .graf-grupo:first-child { border-top: none; }
+  .graf-grupo > summary { padding: 14px 2px; }
+  .graf-grupo .dash-grupo-corpo { padding: 4px 2px 10px; }
+
+  /* ----- Retirar direto na linha (Enfermagem) ----- */
+  .btn-retirar { color: var(--magenta); border-color: rgba(255,47,208,0.55); }
+  .btn-retirar:hover:not(:disabled) { background: rgba(255,47,208,0.1); box-shadow: 0 0 12px rgba(255,47,208,0.35); }
+  .btn-retirar:disabled { cursor: not-allowed; color: var(--text-muted); border-color: var(--line); }
+  .combo-op small.sem { color: var(--red); }
+  .mais-btn { min-width: 44px; }
+  .dash-tabela summary { padding: 11px 0; }
+
+  @media (max-width: 480px) {
+    header { gap: 4px 16px; margin-bottom: 14px; }
+    header p { font-size: 0.82rem; }
+    /* busca e ação principal numa linha só; os mostradores acima já filtram a lista */
+    .toolbar { flex-wrap: nowrap; margin-bottom: 0; }
+    .toolbar input[type="search"] { min-width: 0; }
+    #geralFiltersRow, #enfFiltersRow { display: none !important; }
+    .tab { padding-left: 4px; padding-right: 4px; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before { animation: none !important; transition: none !important; }
   }
@@ -581,7 +634,7 @@
 <div class="wrap">
   <header>
     <h1 id="pageTitle"><svg class="ic logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5" stroke="var(--cyan)"/><path d="M10 7h4v3h3v4h-3v3h-4v-3H7v-4h3z" stroke="var(--magenta)"/></svg>Controle de Estoque</h1>
-    <p id="subtitle">Carregando dados...</p>
+    <p id="subtitle" class="st-carregando">Carregando os saldos…</p>
   </header>
 
   <div class="main-nav">
@@ -599,12 +652,11 @@
 
   <div class="card">
     <div class="toolbar">
-      <input type="search" id="searchInput" placeholder="Buscar por nome ou código..." aria-label="Buscar medicamento por nome ou código" />
-      <button class="btn-outline btn-sm" id="sortBtn" title="Mudar a ordem: A–Z, Z–A ou mais urgentes">A–Z</button>
+      <input type="search" id="searchInput" placeholder="Buscar remédio" aria-label="Buscar medicamento por nome ou código" />
+      <button class="btn-outline btn-sm" id="importBtn" title="Importar o relatório de saldos do Olostech (PDF)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>Importar</button>
       <div class="mais">
         <button class="btn-outline btn-sm mais-btn" aria-haspopup="true" aria-expanded="false" aria-label="Mais opções" title="Mais opções">⋯</button>
         <div class="mais-menu" role="menu" hidden>
-          <button role="menuitem" id="importBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>Importar relatório</button>
           <button role="menuitem" id="printBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="1"/><path d="M6 14h12v7H6z"/></svg>Imprimir lista</button>
           <button role="menuitem" id="novoItemBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Novo item</button>
         </div>
@@ -618,6 +670,7 @@
     <div class="tabbar">
       <button class="tab active" data-view="list">Lista</button>
       <button class="tab" data-view="painel">Gráficos</button>
+      <button class="btn-outline btn-sm btn-ordem" id="sortBtn" title="Mudar a ordem: A–Z, Z–A ou mais urgentes" aria-label="Ordem da lista: A–Z. Toque para mudar."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg><span>A–Z</span></button>
     </div>
   </div>
 
@@ -625,7 +678,7 @@
     <div id="itemList"></div>
     <div class="empty" id="emptyState" style="display:none">
       <div><svg class="ic ic-grande" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 3h6l1-3h5"/></svg></div>
-      <div>Nenhum item ainda. Use o botão + para adicionar.</div>
+      <div id="emptyTexto">Nenhum item encontrado. Confira a busca ou o filtro.</div>
     </div>
     <div id="geralPainelPanel" style="display:none">
       <div class="filters" id="geralPainelFilters" style="margin-bottom:14px; align-items:center;">
@@ -645,8 +698,7 @@
 
     <div class="card">
       <div class="toolbar">
-        <input type="search" id="enfSearchInput" placeholder="Buscar por nome ou código..." aria-label="Buscar medicamento da Enfermagem por nome ou código" />
-        <button class="btn-outline btn-sm" id="enfSortBtn" title="Mudar a ordem: A–Z, Z–A ou mais urgentes">A–Z</button>
+        <input type="search" id="enfSearchInput" placeholder="Buscar remédio" aria-label="Buscar medicamento da Enfermagem por nome ou código" />
         <button class="btn-primary btn-sm" id="enfRegistrarBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Registrar</button>
         <div class="mais">
           <button class="btn-outline btn-sm mais-btn" aria-haspopup="true" aria-expanded="false" aria-label="Mais opções" title="Mais opções">⋯</button>
@@ -664,6 +716,7 @@
         <button class="tab active" data-enfview="list">Lista</button>
         <button class="tab" data-enfview="hist">Histórico</button>
         <button class="tab" data-enfview="painel">Gráficos</button>
+        <button class="btn-outline btn-sm btn-ordem" id="enfSortBtn" title="Mudar a ordem: A–Z, Z–A ou mais urgentes" aria-label="Ordem da lista: A–Z. Toque para mudar."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg><span>A–Z</span></button>
       </div>
     </div>
 
@@ -703,7 +756,7 @@
 
 <!-- Modal: add/edit item -->
 <div class="modal-backdrop" id="modalBackdrop" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <h2 id="modalTitle">Novo item</h2>
     <div class="field">
       <label for="fieldName">Nome do item</label>
@@ -741,14 +794,15 @@
 
 <!-- Modal: import from Olostech report -->
 <div class="modal-backdrop" id="importBackdrop" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitulo">
+  <div class="modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="importTitulo">
     <h2 id="importTitulo">Importar relatório do Olostech</h2>
+    <div id="importForm">
     <p style="font-size:0.82rem;color:var(--text-muted);margin:-6px 0 12px;">
       Escolha os PDFs da "Relação de Saldo de Materiais" — o <b>com saldo</b> e o <b>sem saldo</b>, os dois juntos.
       O site confere a soma com o total do relatório antes de importar.
     </p>
     <div class="pdf-pick">
-      <label class="btn-primary" for="importPdf"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/></svg>Escolher PDF do Olostech</label>
+      <button type="button" class="btn-primary" id="importEscolherBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/></svg>Escolher PDF do Olostech</button>
       <input type="file" id="importPdf" accept="application/pdf,.pdf" multiple hidden />
       <div id="importPdfStatus" class="pdf-status" aria-live="polite"></div>
     </div>
@@ -759,16 +813,26 @@
       </div>
     </details>
     <div id="importPreview" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:6px;"></div>
+    <div id="importAndamento" class="import-andamento" role="status"></div>
     <div class="modal-actions">
       <button class="btn-ghost" id="importCancelBtn">Cancelar</button>
       <button class="btn-primary" id="importConfirmBtn">Importar</button>
+    </div>
+    </div>
+    <div id="importFim" class="import-fim" hidden>
+      <p class="import-fim-tit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span id="importFimTit" role="status">Relatório importado</span></p>
+      <ul id="importFimLista"></ul>
+      <div id="importFimNotas"></div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="importFimBtn">Fechar</button>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- Modal: registrar retirada da Enfermagem (um ou vários medicamentos) -->
 <div class="modal-backdrop" id="enfBackdrop" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="enfTitulo">
+  <div class="modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="enfTitulo">
     <h2 id="enfTitulo">Registrar retirada — Enfermagem</h2>
     <div id="enfForm">
     <div class="field">
@@ -827,7 +891,7 @@
 
 <!-- Modal: baixas da Enfermagem para lançar no Olostech -->
 <div class="modal-backdrop" id="pendBackdrop" style="display:none">
-  <div class="modal modal-largo" role="dialog" aria-modal="true" aria-labelledby="pendTitulo">
+  <div class="modal modal-largo" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="pendTitulo">
     <h2 id="pendTitulo">Baixas para lançar no Olostech</h2>
     <p class="chart-sub" style="margin:-6px 0 14px">Retiradas registradas pela Enfermagem que ainda não foram lançadas no Olostech. Depois de lançar lá, marque aqui — enquanto estiverem pendentes, a importação do relatório desconta essas quantidades.</p>
     <div id="pendLista"></div>
@@ -849,6 +913,7 @@
 
   let db = null;
   let items = {}; // id -> item data
+  let itensOcultos = {}; // despadronizados: fora da tela, mas a importação precisa saber que existem
   let editingId = null;
   let currentFilter = "all";
   let sortMode = "az";
@@ -896,6 +961,10 @@
     const p = item.id ? consumoPorDia(item.id) : 0;
     return p ? q / p : Infinity;
   }
+  // Mesma conta para o selo, a cor e o texto: "dura ≈ 7 dias" sempre aparece como alerta
+  function acabaLogo(d) { return Math.round(d) <= DIAS_ALERTA; }
+  // "1 dia", "3 dias", "1 item", "12 itens" (aceita número já formatado, como "1.234")
+  function plural(n, um, varios) { return `${n} ${String(n) === "1" ? um : (varios || um + "s")}`; }
   function textoDura(d) {
     return d < 1 ? "menos de 1 dia" : d > 90 ? "mais de 90 dias" : `${Math.round(d)} dia${Math.round(d) === 1 ? "" : "s"}`;
   }
@@ -906,7 +975,7 @@
     const min = Number(item.min) || 0;
     if (qty <= 0) return "zero";
     if (min > 0 && qty <= min) return "low";
-    if (duraDias(item) <= DIAS_ALERTA) return "low";
+    if (acabaLogo(duraDias(item))) return "low";
     return "ok";
   }
 
@@ -926,7 +995,9 @@
         </div>
         <div class="qty-value qty-${st}">${Number(it.qty) || 0}</div>
         <div class="item-actions">
-          <button class="icon-btn" data-action="edit" data-id="${it.id}" aria-label="Editar ${escapeHtml(it.name)}" title="Editar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg></button>
+          ${dentroEnf
+            ? `<button class="btn-outline btn-sm btn-retirar" data-action="retirar" data-id="${it.id}" aria-label="Retirar ${escapeHtml(it.name)}"${st === "zero" ? ' disabled title="Sem estoque para retirar"' : ""}>Retirar</button>`
+            : `<button class="icon-btn" data-action="edit" data-id="${it.id}" aria-label="Editar ${escapeHtml(it.name)}" title="Editar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg></button>`}
         </div>
       </div>
     `;
@@ -947,6 +1018,10 @@
   // Ordem da lista: A–Z, Z–A ou mais urgentes
   const MODOS_ORDEM = { az: "A–Z", za: "Z–A", urg: "Urgentes" };
   const PROXIMO_MODO = { az: "za", za: "urg", urg: "az" };
+  function rotuloOrdem(btn, modo) {
+    btn.querySelector("span").textContent = MODOS_ORDEM[modo];
+    btn.setAttribute("aria-label", `Ordem da lista: ${MODOS_ORDEM[modo]}. Toque para mudar.`);
+  }
 
   // Consumo (saídas por uso) nos últimos "baseDias", limitado ao histórico que existe
   function consumoRecente(baseDias) {
@@ -1002,7 +1077,7 @@
       { cls: "k-cyan", label: "Com saída (7 dias)", short: "Saída 7d", value: comSaida, view: "painel" },
     ];
     el("kpis").innerHTML = cards.map((c) =>
-      `<button class="kpi clickable ${c.cls}" ${c.dica ? `title="${c.dica}" ` : ""}${c.filter ? `data-kfilter="${c.filter}"` : `data-kview="${c.view}"`}>
+      `<button class="kpi clickable ${c.cls}${c.filter && currentView === "list" && currentFilter === c.filter ? " ativo" : ""}" ${c.dica ? `title="${c.dica}" ` : ""}${c.filter ? `data-kfilter="${c.filter}" aria-pressed="${currentView === "list" && currentFilter === c.filter}"` : `data-kview="${c.view}"`}>
         <div class="kpi-label"><span class="kl-full">${c.label}</span><span class="kl-short">${c.short}</span></div>
         <div class="kpi-value">${c.value}</div>
       </button>`).join("");
@@ -1017,6 +1092,8 @@
     itemList.style.display = showPainel ? "none" : "";
     el("geralPainelPanel").style.display = showPainel ? "block" : "none";
     el("geralFiltersRow").style.display = showPainel ? "none" : "flex";
+    el("sortBtn").style.display = showPainel ? "none" : "";
+    el("emptyTexto").textContent = list.length ? "Nenhum item encontrado. Confira a busca ou o filtro." : "Nenhum item ainda. Importe o relatório do Olostech para começar.";
 
     if (showPainel) {
       emptyState.style.display = "none";
@@ -1052,13 +1129,40 @@
   const DIAS_SELO_CHEGOU = 7;
   let ultimaEntrada = {};   // itemId -> movimento da chegada mais recente
   // "Saldos do relatório de hoje, 19:29" — a data da última importação que mudou algum saldo
+  // A bolinha e o texto dizem a mesma coisa: verde = saldos em dia; amarelo = relatório
+  // antigo; vermelho = sem conexão; cinza = ainda carregando.
+  let estadoBanco = "carregando";   // "carregando" | "ok" | "erro"
+  let movsCarregados = false;
+  function situacao(cls, texto, dica) {
+    subtitle.className = "st-" + cls;
+    subtitle.textContent = texto;
+    subtitle.title = dica || "";
+  }
+  // Dias úteis entre duas datas (sábado e domingo não contam: a farmácia não importa relatório)
+  function diasUteisDesde(ts) {
+    const d = new Date(ts); d.setHours(0, 0, 0, 0);
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    let n = 0;
+    while (d < hoje) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) n++; }
+    return n;
+  }
   function atualizarSubtitulo() {
+    if (!db) { situacao("erro", "Banco de dados não configurado — edite firebase-config.js (veja o README.md)."); return; }
+    if (estadoBanco === "erro") { situacao("erro", "Sem conexão com o banco de dados. Confira a internet e recarregue a página."); return; }
+    if (navigator.onLine === false) { situacao("erro", "Sem internet — estes são os últimos saldos carregados e podem ter mudado."); return; }
+    if (estadoBanco === "carregando" || !movsCarregados) { situacao("carregando", "Carregando os saldos…"); return; }
     const ts = Math.max(0, ...movements.filter((m) => m.source === "import").map((m) => m.ts));
-    if (!ts) { subtitle.textContent = "Estoque — aguardando a primeira importação do Olostech"; return; }
+    if (!ts) { situacao("velho", "Nenhum relatório do Olostech importado nos últimos 90 dias — os saldos podem estar desatualizados."); return; }
     const d = new Date(ts), hoje = new Date(), ontem = new Date(Date.now() - 86400000);
-    const dia = d.toDateString() === hoje.toDateString() ? "hoje" : d.toDateString() === ontem.toDateString() ? "ontem" : d.toLocaleDateString("pt-BR");
-    subtitle.textContent = `Saldos do relatório do Olostech importado ${dia}, às ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-    subtitle.title = "As retiradas registradas pela Enfermagem aparecem na hora; o resto atualiza quando o relatório é importado.";
+    const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const dica = "As retiradas registradas pela Enfermagem aparecem na hora; o resto atualiza quando o relatório é importado.";
+    if (diasUteisDesde(ts) <= 1) {
+      const dia = d.toDateString() === hoje.toDateString() ? "hoje" : d.toDateString() === ontem.toDateString() ? "ontem" : "em " + d.toLocaleDateString("pt-BR");
+      situacao("ok", `Saldos do relatório do Olostech importado ${dia}, às ${hora}`, dica);
+    } else {
+      const corridos = Math.round((new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+      situacao("velho", `Saldos do relatório de ${d.toLocaleDateString("pt-BR")}, há ${corridos} dias — podem estar desatualizados. Importe o relatório novo.`, dica);
+    }
   }
 
   function recalcularEntradas() {
@@ -1129,7 +1233,22 @@
       (rows.length > limite ? `<button class="btn-ghost btn-sm ver-mais" data-vermais="${chaveVerMais}">${todos ? `Mostrar só os ${limite} primeiros` : `Ver todos os ${rows.length} itens`}</button>` : "");
   }
 
+  // Ao fechar uma janela, o foco volta para o botão que a abriu (teclado e leitor de tela)
+  let focoAntes = null;
+  function guardarFoco() {
+    const a = document.activeElement;
+    focoAntes = a && a !== document.body ? { el: a, acao: a.dataset && a.dataset.action, id: a.dataset && a.dataset.id } : null;
+  }
+  function devolverFoco() {
+    const f = focoAntes; focoAntes = null;
+    if (!f) return;
+    // a lista é redesenhada quando o saldo muda: procura o mesmo botão de novo
+    const alvo = document.contains(f.el) ? f.el : (f.acao && f.id ? document.querySelector(`[data-action="${f.acao}"][data-id="${f.id}"]`) : null);
+    if (alvo && alvo.offsetParent !== null) alvo.focus({ preventScroll: true });
+  }
+
   function openModal(id) {
+    guardarFoco();
     editingId = id || null;
     el("modalTitle").textContent = id ? "Editar item" : "Novo item";
     el("deleteBtn").style.display = id ? "block" : "none";
@@ -1154,11 +1273,13 @@
       el("fieldCode").value = "";
     }
     el("modalBackdrop").style.display = "flex";
+    el("modalBackdrop").querySelector(".modal").focus();
   }
 
   function closeModal() {
     el("modalBackdrop").style.display = "none";
     editingId = null;
+    devolverFoco();
   }
 
   async function saveItem() {
@@ -1352,7 +1473,7 @@
       .filter((id) => pend[id])
       .map((id) => `${escapeHtml(items[id] ? items[id].name : id)} (${pend[id] > 0 ? "+" : ""}${pend[id]})`);
     const aviso = descontos.length
-      ? `<div class="import-aviso">Baixas da Enfermagem ainda não lançadas no Olostech serão descontadas do saldo do relatório em ${descontos.length} item(ns): ${descontos.join(", ")}.
+      ? `<div class="import-aviso">Baixas da Enfermagem ainda não lançadas no Olostech serão descontadas do saldo do relatório em ${plural(descontos.length, "item", "itens")}: ${descontos.join(", ")}.
          Se você já lançou alguma delas no Olostech, marque como lançada antes de importar.</div>`
       : "";
     // o que vai mudar
@@ -1370,14 +1491,14 @@
         : `<div class="import-erro">A soma lida (${c.somaLida.toLocaleString("pt-BR")}) não bate com o total do relatório (${c.somaTotais.toLocaleString("pt-BR")}). Algum item não foi lido — não importe e confira o PDF.</div>`);
     }
     if (c && c.faltando.length) {
-      avisos.push(`<div class="import-aviso">${c.faltando.length} item(ns) com saldo no site não estão neste relatório (ex.: ${c.faltando.slice(0, 3).map(escapeHtml).join(", ")}). Se eles zeraram, escolha também o PDF <b>sem saldo</b> — senão continuam com o saldo antigo.</div>`);
+      avisos.push(`<div class="import-aviso">${plural(c.faltando.length, "item", "itens")} com saldo no site não estão neste relatório (ex.: ${c.faltando.slice(0, 3).map(escapeHtml).join(", ")}). Se eles zeraram, escolha também o PDF <b>sem saldo</b> — senão continuam com o saldo antigo.</div>`);
     }
     const ultimaImport = Math.max(0, ...movements.filter((m) => m.source === "import").map((m) => m.ts));
     if (c && c.impresso && c.impresso < ultimaImport && (sobem || descem)) {
       avisos.push(`<div class="import-aviso">Este relatório é de ${new Date(c.impresso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}, mais antigo que a última importação (${new Date(ultimaImport).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}). Importar um relatório velho volta os saldos para trás.</div>`);
     }
     if (c && c.temTotal && !c.bate) el("importConfirmBtn").disabled = true;
-    el("importPreview").innerHTML = `${parsed.length} item(ns) reconhecido(s) — formato: ${label}${c && c.impresso ? ` · relatório de ${new Date(c.impresso).toLocaleDateString("pt-BR")}` : ""}.
+    el("importPreview").innerHTML = `${plural(parsed.length, "item reconhecido", "itens reconhecidos")} — formato: ${label}${c && c.impresso ? ` · relatório de ${new Date(c.impresso).toLocaleDateString("pt-BR")}` : ""}.
       <div class="import-resumo"><span>Saldo diminui: <b>${descem}</b></span><span>Chegou (saldo sobe): <b>${sobem}</b></span><span>Sem mudança: <b>${parsed.length - sobem - descem}</b></span></div>
       ${avisos.join("")}${aviso}`;
   }
@@ -1426,20 +1547,26 @@
     updateImportPreview();
   }
 
+  let importando = false;   // enquanto grava, a janela não fecha
   async function confirmImport() {
     const { items: parsed } = parseOlostechReport(el("importText").value);
     if (!parsed.length) { showToast("Nenhum item reconhecido"); return; }
     if (!db) { showToast("Sem conexão com o banco"); return; }
-    let ok = 0, fail = 0, descontados = 0, entradas = 0;
+    let ok = 0, fail = 0, descontados = 0, entradas = 0, desceram = 0, novos = 0, feitos = 0;
+    const zeraram = [];
     const pend = pendentePorItem();
-    el("importConfirmBtn").disabled = true;
+    const total = new Set(parsed.map(docIdDoRelatorio)).size;
+    importando = true;
+    ["importConfirmBtn", "importCancelBtn", "importEscolherBtn"].forEach((id) => { el(id).disabled = true; });
     const usedIds = new Set();
     for (const it of parsed) {
       try {
         const docId = docIdDoRelatorio(it);
         if (usedIds.has(docId)) continue;
         usedIds.add(docId);
-        const prev = items[docId] || {};
+        el("importAndamento").textContent = `Importando ${++feitos} de ${total}… não feche a página.`;
+        const prev = items[docId] || itensOcultos[docId] || {};
+        const existia = !!(items[docId] || itensOcultos[docId]);
         const qtyBefore = Number(prev.qty) || 0;
         const qtyFinal = Math.max(0, it.qty + (pend[docId] || 0));
         if (pend[docId]) descontados++;
@@ -1455,15 +1582,34 @@
           updatedAt: Date.now(),
         }, { merge: true });
         // saldo de um item que já existia subiu = mercadoria que chegou
-        const entrada = items[docId] && qtyFinal > qtyBefore;
+        const entrada = existia && qtyFinal > qtyBefore;
         if (entrada) entradas++;
+        else if (!existia) novos++;
+        else if (qtyFinal < qtyBefore) { desceram++; if (qtyFinal === 0) zeraram.push(prev.name || it.name); }
         logMovement(docId, it.name || prev.name, qtyBefore, qtyFinal, "import", entrada ? { entrada: true } : null);
         ok++;
       } catch (e) { fail++; }
     }
-    el("importConfirmBtn").disabled = false;
-    closeImportModal();
-    showToast(`Importado: ${ok}${entradas ? " · " + entradas + " com entrada" : ""}${descontados ? " · " + descontados + " com baixa pendente da Enfermagem" : ""}${fail ? " · falhas: " + fail : ""}`);
+    importando = false;
+    ["importConfirmBtn", "importCancelBtn", "importEscolherBtn"].forEach((id) => { el(id).disabled = false; });
+    el("importAndamento").textContent = "";
+    // O resultado fica na tela até fechar (um aviso de 3 segundos some antes de ser lido)
+    const linhas = [
+      ["Saldo diminuiu", desceram],
+      ["Chegou mercadoria (saldo subiu)", entradas],
+      ["Sem mudança", ok - desceram - entradas - novos],
+      ...(novos ? [["Itens novos", novos]] : []),
+      ...(descontados ? [["Com baixa da Enfermagem descontada", descontados]] : []),
+    ];
+    el("importFimTit").textContent = fail ? `Importado com ${plural(fail, "falha")}` : "Relatório importado";
+    el("importFim").classList.toggle("com-falha", fail > 0);
+    el("importFimLista").innerHTML = linhas.map(([rot, n]) => `<li><span>${rot}</span><b>${plural(n, "item", "itens")}</b></li>`).join("");
+    el("importFimNotas").innerHTML =
+      (zeraram.length ? `<p class="import-fim-nota"><b>Zeraram:</b> ${zeraram.slice(0, 8).map(escapeHtml).join(" · ")}${zeraram.length > 8 ? ` e mais ${zeraram.length - 8}` : ""}</p>` : "") +
+      (fail ? `<p class="import-erro">${plural(fail, "item não foi gravado", "itens não foram gravados")}. Confira a internet e importe o mesmo relatório de novo — não tem problema repetir.</p>` : "");
+    el("importForm").hidden = true;
+    el("importFim").hidden = false;
+    el("importFimBtn").focus();
   }
 
   // ----- Baixas para lançar no Olostech -----
@@ -1505,8 +1651,8 @@
     el("pendMarcarBtn").disabled = false;
   }
 
-  function abrirPendentes() { renderPendLista(); el("pendBackdrop").style.display = "flex"; }
-  function fecharPendentes() { el("pendBackdrop").style.display = "none"; }
+  function abrirPendentes() { guardarFoco(); renderPendLista(); el("pendBackdrop").style.display = "flex"; el("pendBackdrop").querySelector(".modal").focus(); }
+  function fecharPendentes() { el("pendBackdrop").style.display = "none"; devolverFoco(); }
 
   async function marcarLancadas() {
     const ids = [...document.querySelectorAll(".pend-check:checked")].map((c) => c.value);
@@ -1536,6 +1682,10 @@
   });
 
   function openImportModal() {
+    guardarFoco();
+    el("importForm").hidden = false;
+    el("importFim").hidden = true;
+    el("importAndamento").textContent = "";
     el("importText").value = "";
     el("importPreview").textContent = "";
     el("importPdf").value = "";
@@ -1543,9 +1693,18 @@
     el("importColar").open = false;
     el("importConfirmBtn").disabled = true;
     el("importBackdrop").style.display = "flex";
+    el("importEscolherBtn").focus();
   }
   function closeImportModal() {
+    if (importando) return;
     el("importBackdrop").style.display = "none";
+    devolverFoco();
+  }
+  // Esc ou toque fora: não perde sem querer o PDF que já foi lido
+  function fecharImportComCuidado() {
+    const lido = !el("importForm").hidden && el("importText").value.trim() !== "";
+    if (importando || (lido && !confirm("Fechar sem importar? O relatório escolhido não foi gravado."))) return;
+    closeImportModal();
   }
 
   // Menu "⋯": abre/fecha, fecha ao escolher, ao clicar fora ou com Esc
@@ -1573,18 +1732,20 @@
     fecharMenus();
     const aberta = (id) => el(id).style.display === "flex";
     if (aberta("enfBackdrop")) fecharEnfComCuidado();
-    else if (aberta("importBackdrop")) closeImportModal();
+    else if (aberta("importBackdrop")) fecharImportComCuidado();
     else if (aberta("pendBackdrop")) fecharPendentes();
     else if (aberta("modalBackdrop")) closeModal();
   });
 
   el("importBtn").addEventListener("click", openImportModal);
   el("importCancelBtn").addEventListener("click", closeImportModal);
+  el("importFimBtn").addEventListener("click", closeImportModal);
+  el("importEscolherBtn").addEventListener("click", () => el("importPdf").click());
   el("importConfirmBtn").addEventListener("click", confirmImport);
   el("importText").addEventListener("input", updateImportPreview);
   el("importPdf").addEventListener("change", (e) => lerPdfsEscolhidos(e.target.files));
   el("importBackdrop").addEventListener("click", (e) => {
-    if (e.target.id === "importBackdrop") closeImportModal();
+    if (e.target.id === "importBackdrop") fecharImportComCuidado();
   });
 
   // Event wiring
@@ -1632,7 +1793,7 @@
 
   el("sortBtn").addEventListener("click", () => {
     sortMode = PROXIMO_MODO[sortMode];
-    el("sortBtn").textContent = MODOS_ORDEM[sortMode];
+    rotuloOrdem(el("sortBtn"), sortMode);
     render();
   });
 
@@ -1661,25 +1822,32 @@
     } catch (e) {
       db = null;
     }
+    atualizarSubtitulo();
     if (!db) {
-      subtitle.textContent = "Banco de dados não configurado — edite firebase-config.js (veja o README.md).";
       render();
       return;
     }
-    subtitle.textContent = "Estoque — carregando…";
+    window.addEventListener("online", atualizarSubtitulo);
+    window.addEventListener("offline", atualizarSubtitulo);
+    setInterval(atualizarSubtitulo, 10 * 60 * 1000);   // página aberta de um dia para o outro
     const col = db.collection("estoque");
     col.onSnapshot(
       (snap) => {
         const next = {};
         // Despadronizados continuam no relatório do Olostech até saírem do sistema, mas não aparecem no site
-        snap.docs.forEach((d) => { const it = d.data(); if (it.despadronizado !== true) next[d.id] = it; });
+        const ocultos = {};
+        snap.docs.forEach((d) => { const it = d.data(); (it.despadronizado === true ? ocultos : next)[d.id] = it; });
         items = next;
+        itensOcultos = ocultos;
+        estadoBanco = "ok";
+        atualizarSubtitulo();
         render();
         renderEnf();
         if (currentSection === "dash") renderDash();
       },
       (err) => {
-        subtitle.textContent = "Erro de conexão com o banco. Verifique as regras do Firestore e recarregue a página.";
+        estadoBanco = "erro";
+        atualizarSubtitulo();
       }
     );
     // Só os últimos 90 dias de histórico (o que os gráficos usam): cada abertura do site
@@ -1689,13 +1857,14 @@
     movCol.onSnapshot(
       (snap) => {
         movements = snap.docs.map((d) => d.data());
+        movsCarregados = true;
         recalcularEntradas();
         atualizarSubtitulo();
         render();
         renderEnf();
         if (currentSection === "dash") renderDash();
       },
-      () => { /* estatística é auxiliar — falha aqui não impede o uso do estoque */ }
+      () => { movsCarregados = true; atualizarSubtitulo(); /* estatística é auxiliar — falha aqui não impede o uso do estoque */ }
     );
     db.collection("movimentos").where("pendenteOlostech", "==", true).onSnapshot(
       (snap) => {
@@ -1762,7 +1931,7 @@
       { cls: "k-magenta", label: "Com saída (7 dias)", short: "Saída 7d", value: comSaida, view: "painel" },
     ];
     el("enfKpis").innerHTML = cards.map((c) =>
-      `<button class="kpi clickable ${c.cls}" ${c.dica ? `title="${c.dica}" ` : ""}${c.filter ? `data-enfkfilter="${c.filter}"` : `data-enfkview="${c.view}"`}>
+      `<button class="kpi clickable ${c.cls}${c.filter && enfView === "list" && enfFilter === c.filter ? " ativo" : ""}" ${c.dica ? `title="${c.dica}" ` : ""}${c.filter ? `data-enfkfilter="${c.filter}" aria-pressed="${enfView === "list" && enfFilter === c.filter}"` : `data-enfkview="${c.view}"`}>
         <div class="kpi-label"><span class="kl-full">${c.label}</span><span class="kl-short">${c.short}</span></div>
         <div class="kpi-value">${c.value}</div>
       </button>`).join("");
@@ -1822,7 +1991,7 @@
   function hbarsHtml(linhas, unidade) {
     const max = Math.max(...linhas.map((l) => l.valor), 1);
     return linhas.map((l) => `
-      <div class="hb-row" tabindex="0" data-tip="${escapeHtml(`${l.nome}: ${l.valor} ${unidade}`)}">
+      <div class="hb-row" tabindex="0" data-tip="${escapeHtml(`${l.nome}: ${plural(l.valor, unidade)}`)}">
         <div class="hb-name">${escapeHtml(l.nome)}</div>
         <div class="hb-track"><div class="hb-bar" style="width:${Math.max(1, (l.valor / max) * 100)}%"></div></div>
         <div class="hb-val">${l.valor}</div>
@@ -1882,7 +2051,7 @@
           <span><i style="background:var(--mag-claro)"></i>Acerto do relatório</span>
         </div>
         ${mostrar.map((r) => `
-          <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.nome}: ${r.site} no site + ${r.acerto} de acerto = ${r.total} unidade(s)`)}">
+          <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.nome}: ${r.site} no site + ${r.acerto} de acerto = ${plural(r.total, "unidade")}`)}">
             <div class="hb-name">${escapeHtml(r.nome)}</div>
             <div class="ur-track" style="width:${Math.max(2, (r.total / maxUso) * 100)}%">
               ${r.site ? `<div class="ur-site" style="flex:${r.site}"></div>` : ""}
@@ -1907,7 +2076,7 @@
       const v = totalSemana[i];
       const h = v ? Math.max(2, Math.round((v / maxSemana) * 100)) : 0;
       const fim = new Date(s); fim.setDate(fim.getDate() + 6);
-      return `<div class="wk-col" tabindex="0" data-tip="${escapeHtml(`Semana ${fmtDiaMes(s)} a ${fmtDiaMes(fim.getTime())}: ${v} unidade(s) usadas`)}">
+      return `<div class="wk-col" tabindex="0" data-tip="${escapeHtml(`Semana ${fmtDiaMes(s)} a ${fmtDiaMes(fim.getTime())}: ${plural(v, "unidade")} usadas`)}">
           ${v ? `<div class="wk-val">${v}</div>` : ""}
           <div class="wk-bar" style="height:${h}%"></div>
         </div>`;
@@ -1934,7 +2103,7 @@
           if (!v) return `<td class="cell zero" data-tip="${escapeHtml(`${r.nome} — ${rotulo(semanas[i])}: nenhum uso`)}">·</td>`;
           const pct = Math.round(14 + 86 * (v / maxCelula));
           const cor = pct >= 80 ? "#1a0015" : "#fff";
-          return `<td class="cell" tabindex="0" style="background:color-mix(in srgb, var(--magenta) ${pct}%, #0a1018);color:${cor}" data-tip="${escapeHtml(`${r.nome} — ${rotulo(semanas[i])}: ${v} unidade(s)`)}">${v}</td>`;
+          return `<td class="cell" tabindex="0" style="background:color-mix(in srgb, var(--magenta) ${pct}%, #0a1018);color:${cor}" data-tip="${escapeHtml(`${r.nome} — ${rotulo(semanas[i])}: ${plural(v, "unidade")}`)}">${v}</td>`;
         }).join("")}
         <td class="tot">${r.total}</td>
         <td class="tot cmm">≈ ${(r.total / Math.max(diasCobertos / 30, 1 / 30)).toFixed(1)}</td>
@@ -1983,12 +2152,12 @@
         <div>
           <h2>Baixas por tipo</h2>
           <div class="chart-sub">Uso, perda e vencimento, em unidades.</div>
-          ${hbarsHtml(tipos, "unidade(s)")}
+          ${hbarsHtml(tipos, "unidade")}
         </div>
         <div>
           <h2>Uso por responsável</h2>
           <div class="chart-sub">Unidades usadas por quem registrou a baixa.</div>
-          ${resp.length ? hbarsHtml(resp, "unidade(s)") : `<div class="chart-sub">Nenhum uso no período.</div>`}
+          ${resp.length ? hbarsHtml(resp, "unidade") : `<div class="chart-sub">Nenhum uso no período.</div>`}
         </div>
       </div>`;
   }
@@ -2154,8 +2323,10 @@
     const rsChegou = d.entradas.reduce((a, m) => a + m.delta * precoDe(m.itemId), 0);
     const diasEntrega = new Set(d.entradas.map((m) => new Date(m.ts).toDateString())).size;
     const itensChegou = new Set(d.entradas.map((m) => m.itemId)).size;
-    const acabam = lista.filter((it) => it.qtd > 0 && duraDias(it) <= DIAS_ALERTA).length;
-    const zerados = lista.filter((it) => it.qtd <= 0).length;
+    // os mesmos números do Estoque Geral: "baixo" e "zerado" saem de statusFor
+    const baixos = lista.filter((it) => statusFor(it) === "low").sort((a, b) => duraDias(a) - duraDias(b));
+    const acabam = baixos.filter((it) => acabaLogo(duraDias(it))).length;
+    const zeradosTodos = lista.filter((it) => statusFor(it) === "zero");
     const med = dashMedida;
     const fmtMed = med === "rs" ? fmtRS : fmtN;
     const valorMed = (r) => (med === "rs" ? r.rs : r.un);
@@ -2183,7 +2354,7 @@
     const desc = { A: "pesam mais no orçamento", B: "peso médio", C: "pouco valor" };
     const abcHtml = d.totRs > 0 ? `
       ${classes.map((k) => `
-        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`Classe ${k.c}: ${k.n} item(ns) — ${fmtRS(k.rs)} (${Math.round((k.rs / d.totRs) * 100)}% do valor que saiu)`)}">
+        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`Classe ${k.c}: ${plural(k.n, "item", "itens")} — ${fmtRS(k.rs)} (${Math.round((k.rs / d.totRs) * 100)}% do valor que saiu)`)}">
           <div class="hb-name"><b>Classe ${k.c}</b> · ${k.n} ${k.n === 1 ? "item" : "itens"}<small class="pedir-meta">${desc[k.c]}</small></div>
           <div class="hb-track"><div class="hb-bar" style="width:${Math.max(1, (k.rs / d.totRs) * 100)}%"></div></div>
           <div class="cob-val"><b>${Math.round((k.rs / d.totRs) * 100)}%</b></div>
@@ -2204,7 +2375,7 @@
     const origemDe = (m) => (m.source === "enfermagem" ? `baixa da Enfermagem${m.responsavel ? " (" + escapeHtml(nomeBonito(m.responsavel)) + ")" : ""}` : "relatório do Olostech");
     const foraHtml = fora.length ? `
       <div class="fora-lista">${foraMostrar.map((f) => `
-        <div class="fora-item" tabindex="0" data-tip="${escapeHtml(`${(items[f.m.itemId] || {}).name || f.m.name}: saíram ${fmtN(f.q)} de uma vez; pelo ritmo normal, seriam ≈ ${fmtN(f.esperado)} em ${Math.round(f.intervalo)} dia(s)`)}">
+        <div class="fora-item" tabindex="0" data-tip="${escapeHtml(`${(items[f.m.itemId] || {}).name || f.m.name}: saíram ${fmtN(f.q)} de uma vez; pelo ritmo normal, seriam ≈ ${fmtN(f.esperado)} em ${plural(Math.round(f.intervalo), "dia")}`)}">
           <span class="fora-icone" aria-hidden="true">!</span>
           <div><b>${escapeHtml((items[f.m.itemId] || {}).name || f.m.name)}</b>
             <small>${new Date(f.m.ts).toLocaleDateString("pt-BR")} · saíram <b>${fmtN(f.q)}</b> de ${fmtN(Number(f.m.qtyBefore) || 0)} de uma vez · ${f.esperado < 1 ? "normalmente quase não sai" : `normal ≈ ${fmtN(f.esperado)} em ${Math.round(f.intervalo)} dia${Math.round(f.intervalo) === 1 ? "" : "s"}`} · ${origemDe(f.m)}</small></div>
@@ -2226,14 +2397,14 @@
         <div><span class="ur-num">${faltas.filter((r) => r.qtd <= 0).length}</span><span class="ur-rot">ainda zerados</span></div>
       </div>
       ${faltaMostrar.map((r) => `
-        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.name}: ${Math.round(r.diasZero)} dia(s) sem estoque${r.qtd <= 0 ? " — zerado agora" : " — já voltou a ter"}`)}">
+        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.name}: ${plural(Math.round(r.diasZero), "dia")} sem estoque${r.qtd <= 0 ? " — zerado agora" : " — já voltou a ter"}`)}">
           <div class="hb-name">${escapeHtml(r.name)}${r.qtd <= 0 ? '<span class="badge badge-zero">zerado agora</span>' : '<span class="badge badge-chegou">voltou</span>'}${r.qtd <= 0 && Number(r.ultMovOlostech) ? `<small class="pedir-meta">último movimento no Olostech: ${new Date(Number(r.ultMovOlostech)).toLocaleDateString("pt-BR")}</small>` : ""}</div>
           <div class="hb-track"><div class="hb-bar falta" style="width:${Math.max(2, (r.diasZero / maxFalta) * 100)}%"></div></div>
           <div class="cob-val"><b>${Math.round(r.diasZero)}</b> dia${Math.round(r.diasZero) === 1 ? "" : "s"}</div>
         </div>`).join("")}
       ${faltas.length > 10 ? `<button class="btn-ghost btn-sm ver-mais" data-dashfalta="1">${dashFaltaTodos ? "Mostrar só os 10 primeiros" : `Ver todos os ${faltas.length} itens`}</button>` : ""}`
       : `<div class="chart-sub">Nenhum item ficou em falta nesse período.</div>`;
-    const notaForaDeLinha = nForaDeLinha ? `<div class="vb-nota">${nForaDeLinha} item(ns) zerados sem movimento no Olostech há mais de 6 meses não entram aqui (parecem fora de linha).</div>` : "";
+    const notaForaDeLinha = nForaDeLinha ? `<div class="vb-nota">${plural(nForaDeLinha, "item", "itens")} zerados sem movimento no Olostech há mais de 6 meses não entram aqui (parecem fora de linha).</div>` : "";
 
     // Enfermagem: uso real (site + acerto do relatório) e quem registra
     const idsEnf = new Set(enfItems().map((it) => it.id));
@@ -2258,11 +2429,11 @@
         <div><span class="ur-num">${pctSite}%</span><span class="ur-rot">registrado no site</span></div>
         <div><span class="ur-num">${pendentesOlostech.length}</span><span class="ur-rot">baixas a lançar no Olostech</span></div>
       </div>
-      <div class="chart-sub" style="margin-top:4px">${fmtN(unSite)} unidade(s) registradas no site e ${fmtN(unAcerto)} que só apareceram no acerto do relatório (saíram sem registro).</div>
+      <div class="chart-sub" style="margin-top:4px">${plural(fmtN(unSite), "unidade")} registradas no site e ${fmtN(unAcerto)} que só apareceram no acerto do relatório (saíram sem registro).</div>
       ${quemLista.length ? `<h3 class="dash-sub">Quem registrou baixas</h3>
         ${quemLista.map((r) => `
-          <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.nome}: ${r.n} registro(s), ${fmtN(r.un)} unidade(s)`)}">
-            <div class="hb-name">${escapeHtml(r.nome)}<small class="pedir-meta">${fmtN(r.un)} unidade(s)</small></div>
+          <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.nome}: ${plural(r.n, "registro")}, ${plural(fmtN(r.un), "unidade")}`)}">
+            <div class="hb-name">${escapeHtml(r.nome)}<small class="pedir-meta">${plural(fmtN(r.un), "unidade")}</small></div>
             <div class="hb-track"><div class="hb-bar enf" style="width:${Math.max(2, (r.n / maxQuem) * 100)}%"></div></div>
             <div class="cob-val"><b>${r.n}</b> registro${r.n === 1 ? "" : "s"}</div>
           </div>`).join("")}` : `<div class="chart-sub">Nenhuma baixa registrada no site nesse período.</div>`}`
@@ -2274,7 +2445,7 @@
     const semPreco = d.linhas.filter((r) => r.semPreco).length;
     const rot = med === "rs" ? "em R$" : "em unidades";
     const avisoHist = d.diasHist < dashDias
-      ? `O histórico começou em ${new Date(Date.now() - d.diasHist * DIA).toLocaleDateString("pt-BR")}: o período mostra os ${Math.round(d.diasHist)} dia(s) que existem${temAnterior ? "" : ", e a comparação com o período anterior aparece quando houver histórico para os dois"}.`
+      ? `O histórico começou em ${new Date(Date.now() - d.diasHist * DIA).toLocaleDateString("pt-BR")}: o período mostra os ${plural(Math.round(d.diasHist), "dia")} que existem${temAnterior ? "" : ", e a comparação com o período anterior aparece quando houver histórico para os dois"}.`
       : (!temAnterior ? "A comparação com o período anterior aparece quando o histórico cobrir os dois períodos." : "");
 
     // mostradores no que foi escolhido (unidades ou R$)
@@ -2286,18 +2457,18 @@
     const kChegouSub = `${med === "rs" ? "" : fmtRS(rsChegou) + " · "}${diasEntrega} entrega${diasEntrega === 1 ? "" : "s"} · ${itensChegou} itens`;
 
     // Precisa de atenção (o que pede ação agora)
-    const listaAcabam = lista.filter((it) => it.qtd > 0 && duraDias(it) <= DIAS_ALERTA).sort((a, b) => duraDias(a) - duraDias(b));
-    const zeradosAgora = lista.filter((it) => it.qtd <= 0 && !foraDeLinha(it));
+    const zeradosAgora = zeradosTodos.filter((it) => !foraDeLinha(it));
     const nomeCurto = (n) => escapeHtml(n || "");
     const maisN = (arr, n) => (arr.length > n ? ` e mais ${arr.length - n}` : "");
     const atencao = [];
-    if (listaAcabam.length) atencao.push({ ir: "saidas", cls: "baixo", n: listaAcabam.length, txt: listaAcabam.length === 1 ? "item acaba em até 7 dias" : "itens acabam em até 7 dias",
-      det: listaAcabam.slice(0, 3).map((it) => `${nomeCurto(it.name)} (${textoDura(duraDias(it))})`).join(" · ") + maisN(listaAcabam, 3) });
-    if (zeradosAgora.length) atencao.push({ ir: "faltas", cls: "zero", n: zeradosAgora.length, txt: zeradosAgora.length === 1 ? "item zerado agora" : "itens zerados agora",
-      det: zeradosAgora.slice(0, 3).map((it) => nomeCurto(it.name)).join(" · ") + maisN(zeradosAgora, 3) });
-    if (fora.length) atencao.push({ ir: "saidas", n: fora.length, txt: fora.length === 1 ? "saída fora do normal para conferir" : "saídas fora do normal para conferir",
+    // cada linha leva direto para a lista (ou a janela) com exatamente os itens contados
+    if (baixos.length) atencao.push({ ir: "lista:low", cls: "baixo", n: baixos.length, txt: baixos.length === 1 ? "item com estoque baixo" : "itens com estoque baixo",
+      det: baixos.slice(0, 3).map((it) => `${nomeCurto(it.name)} (${Number.isFinite(duraDias(it)) ? textoDura(duraDias(it)) : "abaixo do mínimo"})`).join(" · ") + maisN(baixos, 3) });
+    if (zeradosTodos.length) atencao.push({ ir: "lista:zero", cls: "zero", n: zeradosTodos.length, txt: zeradosTodos.length === 1 ? "item zerado" : "itens zerados",
+      det: (zeradosAgora.length ? zeradosAgora.slice(0, 3).map((it) => nomeCurto(it.name)).join(" · ") + maisN(zeradosAgora, 3) : "") + (nForaDeLinha ? `${zeradosAgora.length ? " · " : ""}${nForaDeLinha} sem movimento há mais de 6 meses` : "") });
+    if (fora.length) atencao.push({ ir: "saidas#fora", n: fora.length, txt: fora.length === 1 ? "saída fora do normal para conferir" : "saídas fora do normal para conferir",
       det: fora.slice(0, 2).map((f) => `${nomeCurto((items[f.m.itemId] || {}).name || f.m.name)} −${fmtN(f.q)}`).join(" · ") + maisN(fora, 2) });
-    if (pendentesOlostech.length) atencao.push({ ir: "enf", n: pendentesOlostech.length, txt: pendentesOlostech.length === 1 ? "baixa da Enfermagem para lançar no Olostech" : "baixas da Enfermagem para lançar no Olostech", det: "" });
+    if (pendentesOlostech.length) atencao.push({ ir: "pendentes", n: pendentesOlostech.length, txt: pendentesOlostech.length === 1 ? "baixa da Enfermagem para lançar no Olostech" : "baixas da Enfermagem para lançar no Olostech", det: "" });
     const atencaoHtml = atencao.length
       ? `<ul class="atencao-lista">${atencao.map((a) => `<li><button type="button" data-dashir="${a.ir}"><b class="${a.cls || ""}">${a.n}</b><span>${a.txt}${a.det ? `<small>${a.det}</small>` : ""}</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></li>`).join("")}</ul>`
       : `<p class="atencao-ok"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>Nada urgente agora.</p>`;
@@ -2307,8 +2478,8 @@
         <summary><h2>${titulo}</h2><span class="grupo-resumo">${resumo}</span><svg class="ic grupo-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
         <div class="dash-grupo-corpo">${corpo}</div>
       </details>`;
-    const bloco = (titulo, sub, corpo, cls) => `
-          <div class="chart-block${cls ? " " + cls : ""}">
+    const bloco = (titulo, sub, corpo, cls, id) => `
+          <div class="chart-block${cls ? " " + cls : ""}"${id ? ` data-bloco="${id}" tabindex="-1"` : ""}>
             <h3>${titulo}</h3>
             <div class="chart-sub">${sub}</div>
             ${corpo}
@@ -2330,13 +2501,13 @@
         <div class="kpi"><div class="kpi-label">Saiu no período</div><div class="kpi-value">${kSaiu}</div><div class="kpi-sub">${kSaiuSub}</div>${comparacaoHtml(med === "rs" ? d.totRs : unSaiu, med === "rs" ? saiuAnterior.rs : saiuAnterior.un, temAnterior)}</div>
         <div class="kpi k-white"><div class="kpi-label">Valor em estoque hoje</div><div class="kpi-value">${fmtRS(valorEstoque)}</div><div class="kpi-sub">${lista.filter((it) => it.qtd > 0).length} itens com saldo</div></div>
         <div class="kpi k-green"><div class="kpi-label">Chegou no período</div><div class="kpi-value">${kChegou}</div><div class="kpi-sub">${kChegouSub}</div>${comparacaoHtml(med === "rs" ? rsChegou : unChegou, med === "rs" ? chegouAnterior : unChegouAnterior, temAnterior)}</div>
-        <div class="kpi k-yellow"><div class="kpi-label">Acabam em até 7 dias</div><div class="kpi-value">${acabam}</div><div class="kpi-sub">e ${zeradosAgora.length} zerado${zeradosAgora.length === 1 ? "" : "s"} agora${nForaDeLinha ? ` (+${nForaDeLinha} fora de linha)` : ""}</div></div>
+        <div class="kpi k-yellow"><div class="kpi-label">Estoque baixo</div><div class="kpi-value">${baixos.length}</div><div class="kpi-sub">${acabam === 1 ? "1 acaba" : acabam + " acabam"} em até 7 dias · ${plural(zeradosTodos.length, "zerado")}</div></div>
       </div>
       ${avisoHist ? `<p class="dash-aviso">${avisoHist}</p>` : ""}
       ${grupo("saidas", "Saídas", `${med === "rs" ? fmtRS(d.totRs) : fmtN(unSaiu) + " un"} · ${d.linhas.length} itens${fora.length ? ` · ${fora.length} fora do normal` : ""}`,
         bloco("Saídas por semana", `Total por semana, ${rot}. Toque numa coluna para ver unidades e R$.`, colunasHtml(porSemana(d.saidas, d.corte, d.agora, med), "unidades")) +
-        bloco("Os que mais saem", `Ranking ${rot} nos últimos ${Math.round(d.diasBase) || 1} dia(s), com a média por mês e quanto ainda dura.`, topHtml) +
-        bloco("Saídas fora do normal", "Saiu de uma vez 10× o ritmo do item e mais da metade do saldo. Vale conferir no Olostech.", foraHtml))}
+        bloco("Os que mais saem", `Ranking ${rot} nos últimos ${plural(Math.round(d.diasBase) || 1, "dia")}, com a média por mês e quanto ainda dura.`, topHtml) +
+        bloco("Saídas fora do normal", "Saiu de uma vez 10× o ritmo do item e mais da metade do saldo. Vale conferir no Olostech.", foraHtml, "", "fora"))}
       ${grupo("faltas", "Faltas e entradas", `${faltas.length} em falta · ${diasEntrega} entrega${diasEntrega === 1 ? "" : "s"}`,
         bloco("Faltas", "Dias sem estoque no período. O site vê que zerou quando o relatório é importado.", faltaHtml + notaForaDeLinha) +
         bloco("Entradas por semana", `Mercadoria que chegou, ${rot}.`, colunasHtml(porSemana(d.entradas, d.corte, d.agora, med), "unidades"), "dash-entradas"))}
@@ -2344,7 +2515,7 @@
         bloco("Uso real", "O que foi registrado no site mais o que só apareceu no acerto do relatório.", enfHtml, "dash-enf"))}
       ${grupo("valores", "Valores e planilha", d.totRs > 0 ? `curva ABC · ${tab.length} itens na tabela` : "sem preços ainda",
         bloco("Curva ABC", "A classe A são poucos itens que somam 80% do gasto: os que mais vale controlar de perto.", abcHtml) +
-        bloco("Tabela completa", `Os ${tab.length} itens que tiveram saída no período.${semPreco ? ` ${semPreco} item(ns) sem preço (estavam zerados no relatório) não entram no R$.` : ""}`, `
+        bloco("Tabela completa", `Os ${tab.length} itens que tiveram saída no período.${semPreco ? ` ${plural(semPreco, "item", "itens")} sem preço (estavam zerados no relatório) não entram no R$.` : ""}`, `
           <div class="pedir-acoes" style="margin:0 0 10px"><button class="btn-outline btn-sm" data-dashcsv="1">Baixar planilha (Excel)</button></div>
           <details class="dash-tabela"><summary>Ver tabela</summary>
             <div class="hist-wrap"><table class="hist-table">
@@ -2383,8 +2554,16 @@
     if (e.target.closest("[data-dashcsv]")) { baixarPlanilhaDash(); return; }
     const ir = e.target.closest("[data-dashir]");
     if (ir) {
-      const g = el("dashBody").querySelector(`.dash-grupo[data-grupo="${ir.dataset.dashir}"]`);
-      if (g) { g.open = true; g.scrollIntoView({ behavior: "smooth", block: "start" }); g.querySelector("summary").focus({ preventScroll: true }); }
+      const alvo = ir.dataset.dashir;
+      if (alvo.startsWith("lista:")) { irParaLista(alvo.slice(6)); return; }
+      if (alvo === "pendentes") { abrirPendentes(); return; }
+      const [grupo, bloco] = alvo.split("#");
+      const g = el("dashBody").querySelector(`.dash-grupo[data-grupo="${grupo}"]`);
+      if (!g) return;
+      g.open = true;
+      const b = bloco && g.querySelector(`[data-bloco="${bloco}"]`);
+      (b || g).scrollIntoView({ behavior: "smooth", block: "start" });
+      (b || g.querySelector("summary")).focus({ preventScroll: true });
     }
   });
   // "toggle" não sobe pela página: escuta na captura
@@ -2397,6 +2576,7 @@
   // ----- Painel de gráficos do Estoque Geral -----
   let geralBase = 30;          // dias de consumo usados na estimativa
   let geralLinhaItem = null;   // item escolhido no histórico
+  const geralAbertos = new Set(["pedir"]);   // grupos de gráficos abertos
   let geralCobTodos = false;   // "ver todos" na lista de dias que dura
   let geralBulTodos = false;   // "ver todos" no saldo x mínimo
   let geralRankTodos = false;  // "ver todos" nos mais consumidos
@@ -2442,7 +2622,7 @@
       { k: "zero", nome: "Zerado", cor: "var(--red)", v: cont.zero },
     ].filter((s) => s.v > 0);
     const sitHtml = `
-      <div class="sit-bar">${sit.map((s) => `<div tabindex="0" style="flex:${s.v};background:${s.cor}" data-tip="${s.nome}: ${s.v} item(ns) — ${Math.round((s.v / total) * 100)}%"></div>`).join("")}</div>
+      <div class="sit-bar">${sit.map((s) => `<div tabindex="0" role="img" aria-label="${s.nome}: ${plural(s.v, "item", "itens")}" style="flex:${s.v};background:${s.cor}" data-tip="${s.nome}: ${plural(s.v, "item", "itens")} — ${Math.round((s.v / total) * 100)}%"></div>`).join("")}</div>
       <div class="sit-legend">${sit.map((s) => `<span><i style="background:${s.cor}"></i>${s.nome} <b>${s.v}</b></span>`).join("")}</div>`;
 
     // 2) Dias que o estoque dura (saldo ÷ consumo médio por dia)
@@ -2456,7 +2636,7 @@
       .sort((a, b) => a.dias - b.dias);
     const TETO = 90;
     // zerado = vermelho; acaba em até 7 dias = amarelo (o mesmo "Baixo" da lista); resto = verde
-    const corDias = (d) => (d <= 0 ? "var(--red)" : d <= DIAS_ALERTA ? "var(--amber)" : "var(--lime)");
+    const corDias = (d) => (d <= 0 ? "var(--red)" : acabaLogo(d) ? "var(--amber)" : "var(--lime)");
     const textoDias = (d) => (d < 1 ? (d === 0 ? "zerado" : "< 1 dia") : d > TETO ? `${TETO}+ dias` : `${Math.round(d)} dia${Math.round(d) === 1 ? "" : "s"}`);
     const cobMostrar = geralCobTodos ? cob : cob.slice(0, 15);
     const cobHtml = cob.length ? `
@@ -2473,7 +2653,7 @@
       </div>`
       : `<div class="chart-sub">Ainda não há saídas registradas nesse período para calcular.</div>`;
     const avisoHist = diasHist < geralBase
-      ? ` O histórico tem só ${Math.max(1, Math.round(diasHist))} dia(s) — a estimativa fica mais confiável com o tempo.`
+      ? ` O histórico tem só ${plural(Math.max(1, Math.round(diasHist)), "dia")} — a estimativa fica mais confiável com o tempo.`
       : "";
 
     // 3) Saldo x estoque mínimo
@@ -2519,7 +2699,7 @@
       ${pedidos.length ? `
         ${pedirMostrar.map((r) => `
           <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.name}: saldo ${r.qtd}, usa ≈ ${(r.porDia * 30).toFixed(0)}/mês → pedir ${r.pedirN}`)}">
-            <div class="hb-name">${escapeHtml(r.name)}<small class="pedir-meta">saldo ${r.qtd} · usa ≈ ${(r.porDia * 30).toFixed(0)}/mês${r.qtd === 0 ? " · zerado" : Number.isFinite(r.dias) ? ` · dura ${r.dias < 1 ? "menos de 1 dia" : Math.round(r.dias) + " dia(s)"}` : ""}</small></div>
+            <div class="hb-name">${escapeHtml(r.name)}<small class="pedir-meta">saldo ${r.qtd} · usa ≈ ${(r.porDia * 30).toFixed(0)}/mês${r.qtd === 0 ? " · zerado" : Number.isFinite(r.dias) ? ` · dura ${r.dias < 1 ? "menos de 1 dia" : plural(Math.round(r.dias), "dia")}` : ""}</small></div>
             <div class="hb-track"><div class="hb-bar" style="width:${Math.max(2, (r.pedirN / maxPedir) * 100)}%;background:${corDias(r.dias)}"></div></div>
             <div class="cob-val">pedir <b>${r.pedirN.toLocaleString("pt-BR")}</b></div>
           </div>`).join("")}
@@ -2541,7 +2721,7 @@
     const zeroMostrar = geralZeroTodos ? zerados : zerados.slice(0, LIM_NOVOS);
     const zeroHtml = zerados.length ? `
       ${zeroMostrar.map((r) => `
-        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.name}: ${Math.round(r.diasZero)} dia(s) sem estoque${r.qtd === 0 ? " — zerado agora" : ""}`)}">
+        <div class="cob-row" tabindex="0" data-tip="${escapeHtml(`${r.name}: ${plural(Math.round(r.diasZero), "dia")} sem estoque${r.qtd === 0 ? " — zerado agora" : ""}`)}">
           <div class="hb-name">${escapeHtml(r.name)}${r.qtd === 0 ? '<span class="badge badge-zero">zerado agora</span>' : ""}</div>
           <div class="hb-track"><div class="hb-bar" style="width:${Math.max(2, (r.diasZero / maxZero) * 100)}%;background:var(--red)"></div></div>
           <div class="cob-val"><b>${Math.round(r.diasZero)}</b> dia${Math.round(r.diasZero) === 1 ? "" : "s"}</div>
@@ -2591,7 +2771,7 @@
         const nomeDe = (m) => (items[m.itemId] ? items[m.itemId].name : m.name);
         const ms = porDiaChegada[k].sort((a, b) => nomeDe(a).localeCompare(nomeDe(b), "pt-BR"));
         return `<div class="chegou-dia">
-          <h3>${new Date(k).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })} <span>· ${ms.length} ${ms.length === 1 ? "item" : "itens"}</span></h3>
+          <h4>${new Date(k).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })} <span>· ${ms.length} ${ms.length === 1 ? "item" : "itens"}</span></h4>
           <div class="chegou-lista">${ms.map((m) => `<span>${escapeHtml(nomeDe(m))}</span><span class="q">+${Number(m.delta).toLocaleString("pt-BR")}</span><span class="s">ficou ${Number(m.qtyAfter).toLocaleString("pt-BR")}</span>`).join("")}</div>
         </div>`;
       }).join("")}
@@ -2606,55 +2786,39 @@
       geralLinhaItem = cob.length ? [...cob].sort((a, b) => b.porDia - a.porDia)[0].id : (opcoes[0] && opcoes[0].id);
     }
 
-    body.innerHTML = `
-      <div class="chart-block">
-        <h2>Situação geral do estoque</h2>
-        <div class="chart-sub">${lista.length} itens cadastrados.</div>
-        ${sitHtml}
-      </div>
-      <div class="chart-block">
-        <h2>Quantos dias o estoque ainda dura</h2>
-        <div class="chart-sub">Saldo atual dividido pelo consumo médio dos últimos ${Math.round(diasBase) || 1} dia(s). Os que acabam primeiro aparecem no topo.${avisoHist}</div>
-        ${cobHtml}
-      </div>
-      <div class="chart-block">
-        <h2>O que pedir</h2>
-        <div class="chart-sub">Quantidade para o estoque durar o período escolhido, pelo consumo dos últimos ${Math.round(diasBase) || 1} dia(s) (e nunca abaixo do estoque mínimo). Os mais urgentes aparecem no topo.${avisoHist}</div>
-        ${pedirHtml}
-      </div>
-      <div class="chart-block">
-        <h2>O que chegou</h2>
-        <div class="chart-sub">Entregas que entraram no estoque (o saldo subiu no relatório do Olostech). "Ficou" é o saldo logo depois da entrada.</div>
-        ${chegouHtml}
-      </div>
-      <div class="chart-block">
-        <h2>Mais consumidos</h2>
-        <div class="chart-sub">Total que saiu nos últimos ${Math.round(diasBase) || 1} dia(s) e a média por mês (CMM).</div>
-        ${rankingConsumoHtml(movements.filter((m) => m.ts >= corte), diasBase, 10, "rank", geralRankTodos)}
-      </div>
-      <div class="chart-block">
-        <h2>Dias zerado</h2>
-        <div class="chart-sub">Quantos dias cada item ficou sem estoque nos últimos ${diasJanela} dia(s). O site sabe que zerou quando o relatório é importado — o dia exato pode ter sido antes.</div>
-        ${zeroHtml}
-      </div>
-      <div class="chart-block">
-        <h2>Itens parados</h2>
-        <div class="chart-sub">Itens com saldo sem nenhum movimento no Olostech (nem baixa no site) há ${PARADO_DIAS} dias ou mais — confira a validade na prateleira.</div>
-        ${paradoHtml}
-      </div>
-      <div class="chart-block">
-        <h2>Saldo x estoque mínimo</h2>
-        <div class="chart-sub">A barra é o saldo; o traço branco é o mínimo. Os mais perto do limite aparecem no topo.</div>
-        ${bulHtml}
-      </div>
-      <div class="chart-block">
-        <h2>Histórico do saldo</h2>
-        <div class="chart-sub">Como o saldo de um item subiu e desceu ao longo do tempo. Os pontos verdes são entradas (mercadoria que chegou).</div>
+    // Os 9 gráficos em 5 grupos que abrem e fecham; só "O que pedir" começa aberto
+    const grupo = (id, titulo, resumo, corpo) => `
+      <details class="dash-grupo graf-grupo" data-grupo="${id}"${geralAbertos.has(id) ? " open" : ""}>
+        <summary><h2>${titulo}</h2><span class="grupo-resumo">${resumo}</span><svg class="ic grupo-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="dash-grupo-corpo">${corpo}</div>
+      </details>`;
+    const bloco = (titulo, sub, corpo) => `
+          <div class="chart-block">
+            ${titulo ? `<h3>${titulo}</h3>` : ""}
+            <div class="chart-sub">${sub}</div>
+            ${corpo}
+          </div>`;
+    const nDias = plural(Math.round(diasBase) || 1, "dia");
+
+    body.innerHTML =
+      grupo("pedir", "O que pedir", `${plural(pedidos.length, "item", "itens")} para repor`,
+        bloco("", `Quantidade para o estoque durar o período escolhido, pelo consumo dos últimos ${nDias} (e nunca abaixo do estoque mínimo). Os mais urgentes aparecem no topo.${avisoHist}`, pedirHtml)) +
+      grupo("situacao", "Situação e duração", `${cont.low} com estoque baixo · ${plural(cont.zero, "zerado")}`,
+        bloco("Situação geral do estoque", `${lista.length} itens cadastrados.`, sitHtml) +
+        bloco("Quantos dias o estoque ainda dura", `Saldo atual dividido pelo consumo médio dos últimos ${nDias}. Os que acabam primeiro aparecem no topo.${avisoHist}`, cobHtml) +
+        bloco("Saldo x estoque mínimo", "A barra é o saldo; o traço branco é o mínimo. Os mais perto do limite aparecem no topo.", bulHtml)) +
+      grupo("chegou", "O que chegou", dias.length ? `última entrega em ${new Date(dias[0]).toLocaleDateString("pt-BR")}` : "nenhuma entrada em 90 dias",
+        bloco("", `Entregas que entraram no estoque (o saldo subiu no relatório do Olostech). "Ficou" é o saldo logo depois da entrada.`, chegouHtml)) +
+      grupo("consumo", "Consumo e histórico", "os que mais saem e o saldo de um item ao longo do tempo",
+        bloco("Mais consumidos", `Total que saiu nos últimos ${nDias} e a média por mês (CMM).`, rankingConsumoHtml(movements.filter((m) => m.ts >= corte), diasBase, 10, "rank", geralRankTodos)) +
+        bloco("Histórico do saldo", "Como o saldo de um item subiu e desceu ao longo do tempo. Os pontos verdes são entradas (mercadoria que chegou).", `
         <div class="linha-box">
           ${opcoes.length ? `<select id="geralLinhaSel" aria-label="Escolher item">${opcoes.map((it) => `<option value="${it.id}" ${it.id === geralLinhaItem ? "selected" : ""}>${escapeHtml(it.name)}</option>`).join("")}</select>
           <div id="geralLinhaSvg"></div>` : `<div class="chart-sub">Ainda não há movimentações registradas.</div>`}
-        </div>
-      </div>`;
+        </div>`)) +
+      grupo("faltas", "Faltas e itens parados", `${plural(zerados.length, "item ficou", "itens ficaram")} sem estoque · ${plural(parados.length, "parado")}`,
+        bloco("Dias zerado", `Quantos dias cada item ficou sem estoque nos últimos ${plural(diasJanela, "dia")}. O site sabe que zerou quando o relatório é importado — o dia exato pode ter sido antes.`, zeroHtml) +
+        bloco("Itens parados", `Itens com saldo sem nenhum movimento no Olostech (nem baixa no site) há ${PARADO_DIAS} dias ou mais — confira a validade na prateleira.`, paradoHtml));
 
     if (opcoes.length) desenharLinha(geralLinhaItem, movPorItem[geralLinhaItem] || []);
   }
@@ -2730,6 +2894,14 @@
     });
   }
 
+  // grupo aberto ou fechado continua assim quando a tela se atualiza
+  el("geralPainelBody").addEventListener("toggle", (e) => {
+    const g = e.target.closest && e.target.closest(".graf-grupo");
+    if (!g || e.target !== g) return;
+    if (g.open) geralAbertos.add(g.dataset.grupo); else geralAbertos.delete(g.dataset.grupo);
+    // o gráfico de linha mede a largura da caixa: só dá para desenhar com o grupo aberto
+    if (g.open && g.dataset.grupo === "consumo" && geralLinhaItem) desenharLinha(geralLinhaItem, movements.filter((m) => m.itemId === geralLinhaItem));
+  }, true);
   el("geralPainelBody").addEventListener("change", (e) => {
     if (e.target.id === "geralLinhaSel") { geralLinhaItem = e.target.value; renderGeralPainel(); }
   });
@@ -2777,6 +2949,7 @@
     el("enfHistPanel").style.display = showHist ? "block" : "none";
     el("enfPainelPanel").style.display = showPainel ? "block" : "none";
     el("enfFiltersRow").style.display = showList ? "flex" : "none";
+    el("enfSortBtn").style.display = showList ? "" : "none";
     esconderDica();
 
     if (showPainel) {
@@ -2802,7 +2975,9 @@
   function lerResponsavel() { try { return localStorage.getItem(CHAVE_RESP) || ""; } catch (e) { return ""; } }
   function guardarResponsavel(v) { try { localStorage.setItem(CHAVE_RESP, v); } catch (e) { /* sem armazenamento: só não lembra */ } }
 
-  function openEnfModal() {
+  // preId: abre já com esse medicamento na lista (botão "Retirar" da linha)
+  function openEnfModal(preId) {
+    if (el("enfBackdrop").style.display !== "flex") guardarFoco();
     enfCarrinho = [];
     el("enfBusca").value = "";
     el("enfFieldTipo").value = "Saída";
@@ -2817,9 +2992,10 @@
     renderCarrinho();
     resumoTipoData();
     el("enfBackdrop").style.display = "flex";
-    el("enfBusca").focus();
+    if (typeof preId === "string" && items[preId]) adicionarAoCarrinho(preId);
+    else el("enfBusca").focus();
   }
-  function closeEnfModal() { fecharSugestoes(); el("enfBackdrop").style.display = "none"; }
+  function closeEnfModal() { fecharSugestoes(); el("enfBackdrop").style.display = "none"; devolverFoco(); }
   // Fechar sem perder sem querer a lista que estava sendo montada
   function fecharEnfComCuidado() {
     const montando = !el("enfForm").hidden && enfCarrinho.length > 0;
@@ -2861,7 +3037,8 @@
     const noCarrinho = new Set(enfCarrinho.map((c) => c.id));
     return enfItems()
       .filter((it) => !noCarrinho.has(it.id) && combinaBusca(it, el("enfBusca").value))
-      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+      // quem tem estoque primeiro; os zerados ficam no fim, marcados
+      .sort((a, b) => ((Number(a.qty) || 0) <= 0) - ((Number(b.qty) || 0) <= 0) || a.name.localeCompare(b.name, "pt-BR"));
   }
 
   function abrirSugestoes() {
@@ -2870,7 +3047,7 @@
     enfSugIdx = lista.length ? Math.min(Math.max(enfSugIdx, 0), lista.length - 1) : -1;
     box.innerHTML = lista.length
       ? lista.map((it, i) => `<div class="combo-op${i === enfSugIdx ? " ativa" : ""}" role="option" id="sug-${i}" data-id="${it.id}" aria-selected="${i === enfSugIdx}">
-          <span>${escapeHtml(it.name)}</span><small>estoque ${Number(it.qty) || 0}</small></div>`).join("")
+          <span>${escapeHtml(it.name)}</span>${(Number(it.qty) || 0) > 0 ? `<small>estoque ${Number(it.qty)}</small>` : `<small class="sem">sem estoque</small>`}</div>`).join("")
       : `<div class="combo-vazio">Nenhum medicamento encontrado.</div>`;
     box.hidden = false;
     el("enfBusca").setAttribute("aria-expanded", "true");
@@ -2889,6 +3066,14 @@
 
   function adicionarAoCarrinho(id) {
     if (!items[id] || enfCarrinho.some((c) => c.id === id)) return;
+    // sem estoque não dá para retirar; entrada, devolução e ajuste continuam valendo
+    const tiraDoEstoque = ["Saída", "Perda", "Vencimento"].includes(el("enfFieldTipo").value);
+    if (tiraDoEstoque && (Number(items[id].qty) || 0) <= 0) {
+      fecharSugestoes();
+      mostrarErroEnf(`${items[id].name} está sem estoque. Para registrar entrada, devolução ou ajuste, abra "mudar tipo ou data" abaixo.`);
+      return;
+    }
+    mostrarErroEnf("");
     enfCarrinho.push({ id, qtd: 1 });
     el("enfBusca").value = "";
     fecharSugestoes();
@@ -3020,6 +3205,18 @@
   });
   el("enfFieldTipo").addEventListener("change", renderCarrinho);
 
+  // Abre o Estoque Geral já na lista filtrada ("low" = estoque baixo, "zero" = zerados)
+  function irParaLista(filtro) {
+    switchSection("geral");
+    if (searchTerm) { searchTerm = ""; el("searchInput").value = ""; }
+    if (filtro === "low") { sortMode = "urg"; rotuloOrdem(el("sortBtn"), sortMode); }
+    document.querySelector('.tab[data-view="list"]').click();
+    document.querySelector(`.chip[data-filter="${filtro}"]`).click();
+    el("kpis").scrollIntoView({ behavior: "smooth", block: "start" });
+    const k = el("kpis").querySelector(`[data-kfilter="${filtro}"]`);
+    if (k) k.focus({ preventScroll: true });
+  }
+
   function switchSection(sec) {
     currentSection = sec;
     el("navGeral").classList.toggle("active", sec === "geral");
@@ -3042,7 +3239,7 @@
 
   el("enfSortBtn").addEventListener("click", () => {
     enfSortMode = PROXIMO_MODO[enfSortMode];
-    el("enfSortBtn").textContent = MODOS_ORDEM[enfSortMode];
+    rotuloOrdem(el("enfSortBtn"), enfSortMode);
     renderEnf();
   });
 
@@ -3103,14 +3300,14 @@
   el("enfItemList").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-action]");
     if (!btn) return;
-    if (btn.dataset.action === "edit") openModal(btn.dataset.id);
+    if (btn.dataset.action === "retirar") openEnfModal(btn.dataset.id);
   });
 
-  el("enfRegistrarBtn").addEventListener("click", openEnfModal);
+  el("enfRegistrarBtn").addEventListener("click", () => openEnfModal());
   el("enfCancelBtn").addEventListener("click", closeEnfModal);
   el("enfSaveBtn").addEventListener("click", saveEnfMovement);
   el("enfBackdrop").addEventListener("click", (e) => { if (e.target.id === "enfBackdrop") fecharEnfComCuidado(); });
-  el("enfOutraBtn").addEventListener("click", openEnfModal);
+  el("enfOutraBtn").addEventListener("click", () => openEnfModal());
   el("enfFecharOkBtn").addEventListener("click", closeEnfModal);
   el("enfFieldTipo").addEventListener("change", resumoTipoData);
   el("enfFieldData").addEventListener("change", resumoTipoData);
